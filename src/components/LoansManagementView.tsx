@@ -3,7 +3,7 @@ import { LoanRequest, LoanStatus, MediaItem, AppSettings } from '../types';
 import { 
   Search, CheckCircle2, Clock, XCircle, RotateCcw, 
   Send, Copy, Check, MessageSquare, Phone, Calendar, 
-  Shield, ArrowRight 
+  Shield, ArrowRight, MapPin 
 } from 'lucide-react';
 import { 
   generateWhatsAppMessage, 
@@ -18,7 +18,7 @@ interface LoansManagementViewProps {
   items: MediaItem[];
   isAdmin: boolean;
   settings: AppSettings;
-  onApproveLoan: (loanId: string, adminName: string) => void;
+  onApproveLoan: (loanId: string, adminName: string, pickupLocation?: string) => void;
   onReturnLoan: (loanId: string, returnNotes: string) => void;
   onRejectLoan: (loanId: string, reason: string) => void;
   onOpenAdminAuth: () => void;
@@ -38,6 +38,14 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<'Semua' | LoanStatus>('Semua');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Approval dialog state (with pickup location)
+  const [approvingLoan, setApprovingLoan] = useState<LoanRequest | null>(null);
+  const [pickupLocationInput, setPickupLocationInput] = useState(
+    settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi'
+  );
+  const [approverNameInput, setApproverNameInput] = useState('Admin Media Pondok');
+  const [sendWaOnApproval, setSendWaOnApproval] = useState(true);
+
   // Return dialog state
   const [returningLoan, setReturningLoan] = useState<LoanRequest | null>(null);
   const [returnNotes, setReturnNotes] = useState('Kondisi alat lengkap dan berfungsi dengan baik.');
@@ -54,6 +62,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
         loan.unitName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         loan.borrowerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         loan.purpose.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (loan.pickupLocation && loan.pickupLocation.toLowerCase().includes(searchQuery.toLowerCase())) ||
         loan.items.some((i) => i.itemName.toLowerCase().includes(searchQuery.toLowerCase()));
 
       const matchStatus = statusFilter === 'Semua' || loan.status === statusFilter;
@@ -74,11 +83,28 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
     }
   };
 
-  const handleConfirmApproval = (loan: LoanRequest) => {
-    const adminName = 'Admin Media Pondok';
-    onApproveLoan(loan.id, adminName);
-    const approvalMsg = generateApprovalWhatsAppMessage(loan, adminName);
-    openWhatsAppDirect(approvalMsg, loan.borrowerPhone);
+  const handleOpenApprovalDialog = (loan: LoanRequest) => {
+    setApprovingLoan(loan);
+    setPickupLocationInput(settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi');
+    setApproverNameInput('Admin Media Pondok');
+    setSendWaOnApproval(true);
+  };
+
+  const handleConfirmApprovalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approvingLoan) return;
+
+    const chosenLocation = pickupLocationInput.trim() || settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi';
+    const adminName = approverNameInput.trim() || 'Admin Media Pondok';
+
+    onApproveLoan(approvingLoan.id, adminName, chosenLocation);
+
+    if (sendWaOnApproval) {
+      const approvalMsg = generateApprovalWhatsAppMessage(approvingLoan, adminName, chosenLocation);
+      openWhatsAppDirect(approvalMsg, approvingLoan.borrowerPhone);
+    }
+
+    setApprovingLoan(null);
   };
 
   const handleConfirmReturn = (e: React.FormEvent) => {
@@ -293,6 +319,21 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                       </div>
                     </div>
 
+                    {/* Tempat Pengambilan Alat Badge (Bila Sudah Disetujui/Ditetapkan Admin) */}
+                    {loan.pickupLocation ? (
+                      <div className="flex items-center gap-2 bg-emerald-100 text-emerald-950 font-semibold p-2.5 rounded-2xl shadow-2xs">
+                        <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <span className="text-xs">
+                          Tempat Pengambilan: <strong className="text-emerald-900">{loan.pickupLocation}</strong>
+                        </span>
+                      </div>
+                    ) : isPending ? (
+                      <div className="flex items-center gap-1.5 text-[11px] text-amber-800 bg-amber-100/60 px-3 py-1.5 rounded-xl">
+                        <MapPin className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                        <span>Tempat pengambilan akan ditentukan oleh Admin saat konfirmasi.</span>
+                      </div>
+                    ) : null}
+
                     <div className="flex items-center gap-2 pt-1 text-slate-600">
                       <Phone className="w-3.5 h-3.5 text-slate-400" />
                       <span>Kontak: {loan.borrowerPhone}</span>
@@ -340,7 +381,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
 
                 {/* Bottom Controls / Action Bar */}
                 <div className="pt-3 border-t border-black/5 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => openWhatsAppDirect(rawWaText)}
@@ -367,6 +408,22 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                         </>
                       )}
                     </button>
+
+                    {/* Quick resend approval button with pickup location included */}
+                    {isActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const msg = generateApprovalWhatsAppMessage(loan, loan.approvedBy || 'Admin Media', loan.pickupLocation);
+                          openWhatsAppDirect(msg, loan.borrowerPhone);
+                        }}
+                        className="px-3.5 py-2 text-xs font-bold text-emerald-900 bg-emerald-100 hover:bg-emerald-200 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs"
+                        title="Kirim ulang info lokasi pengambilan ke WA pemohon"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Kirim Info Pengambilan ke WA</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Right Admin Actions */}
@@ -376,11 +433,11 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                         <>
                           <button
                             type="button"
-                            onClick={() => handleConfirmApproval(loan)}
+                            onClick={() => handleOpenApprovalDialog(loan)}
                             className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all flex items-center gap-1.5 shadow-xs"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Setujui Peminjaman</span>
+                            <span>Setujui & Tentukan Pengambilan</span>
                           </button>
                           <button
                             type="button"
@@ -504,6 +561,154 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                   className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs"
                 >
                   Tolak Permohonan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Approval & Pickup Location Modal */}
+      {approvingLoan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-xl max-w-lg w-full p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                    Konfirmasi Persetujuan Peminjaman
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    {approvingLoan.id} · {approvingLoan.unitName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setApprovingLoan(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Loan Summary Preview */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl text-xs space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1 text-slate-700">
+                <span>Pemohon: <strong className="text-slate-900">{approvingLoan.borrowerName}</strong> ({approvingLoan.borrowerPhone})</span>
+                <span>Jadwal: <strong>{formatDateIndo(approvingLoan.startDate)}</strong> ({approvingLoan.startTime})</span>
+              </div>
+              <div className="text-[11px] text-slate-600 border-t border-slate-200/60 pt-1.5">
+                <strong className="text-slate-800">Alat ({approvingLoan.items.length} item):</strong>{' '}
+                {approvingLoan.items.map((i) => i.itemName).join(', ')}
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleConfirmApprovalSubmit} className="space-y-4">
+              {/* Pickup Location input with preset chips */}
+              <div className="space-y-2">
+                <label className="block text-xs font-extrabold text-slate-900">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-emerald-950">
+                      <MapPin className="w-4 h-4 text-emerald-600" />
+                      <span>Tempat Pengambilan Alat *</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-700 font-semibold">Wajib ditentukan</span>
+                  </div>
+                </label>
+
+                {/* Preset Chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    'Studio Biro Media & Dokumentasi',
+                    'Ruang Media Center Lt. 2',
+                    'Studio Podcast',
+                    'Gudang Alat Media',
+                    'Kantor Sekretariat Pondok',
+                    'Pos Keamanan Utama',
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setPickupLocationInput(preset)}
+                      className={`px-2.5 py-1 text-[11px] rounded-xl font-bold transition-all ${
+                        pickupLocationInput === preset
+                          ? 'bg-emerald-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Free input field */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Tulis tempat pengambilan (misal: Ruang Media Center Lt. 2, Lemari B)..."
+                    value={pickupLocationInput}
+                    onChange={(e) => setPickupLocationInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 leading-relaxed">
+                  Keterangan ini akan langsung dicantumkan pada konfirmasi WhatsApp peminjam agar unit bersangkutan tahu ke mana harus mengambil barang.
+                </p>
+              </div>
+
+              {/* Admin Approver Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Nama Petugas / Admin Penyetuju
+                </label>
+                <input
+                  type="text"
+                  value={approverNameInput}
+                  onChange={(e) => setApproverNameInput(e.target.value)}
+                  placeholder="Admin Media Pondok"
+                  className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-900"
+                />
+              </div>
+
+              {/* Checkbox send WhatsApp */}
+              <div className="flex items-start gap-2.5 p-3 bg-emerald-50/70 rounded-2xl">
+                <input
+                  type="checkbox"
+                  id="sendWaApproval"
+                  checked={sendWaOnApproval}
+                  onChange={(e) => setSendWaOnApproval(e.target.checked)}
+                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                />
+                <label htmlFor="sendWaApproval" className="text-xs text-emerald-950 font-medium cursor-pointer">
+                  <strong>Buka WhatsApp otomatis untuk kirim konfirmasi ke peminjam</strong>
+                  <span className="block text-[11px] text-emerald-800 mt-0.5">
+                    Pesan otomatis mencakup rincian item, jadwal, dan tempat pengambilan: <em>"{pickupLocationInput || 'Studio Media'}"</em>
+                  </span>
+                </label>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setApprovingLoan(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Setujui & Konfirmasi Lokasi</span>
                 </button>
               </div>
             </form>

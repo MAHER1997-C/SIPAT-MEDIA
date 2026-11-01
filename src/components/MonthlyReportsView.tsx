@@ -630,6 +630,13 @@ export const MonthlyReportsView: React.FC<MonthlyReportsViewProps> = ({
                         <div>{formatDateIndo(loan.startDate)} s/d {formatDateIndo(loan.endDate)}</div>
                       </div>
 
+                      {loan.pickupLocation && (
+                        <div className="text-[11px] text-emerald-900 bg-emerald-50 px-2.5 py-1.5 rounded-xl font-medium flex items-center gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Lokasi Pengambilan: <strong>{loan.pickupLocation}</strong></span>
+                        </div>
+                      )}
+
                       <div className="text-[11px] text-slate-600">
                         <span className="font-semibold text-slate-800">{loan.items.length} alat: </span>
                         <span>{loan.items.map((i) => i.itemName).join(', ')}</span>
@@ -657,6 +664,12 @@ export const MonthlyReportsView: React.FC<MonthlyReportsViewProps> = ({
                           <td className="py-3 px-3">
                             <div className="font-bold text-slate-900">{loan.unitName}</div>
                             <div className="text-[11px] text-slate-500">PJ: {loan.borrowerName} ({loan.borrowerPhone})</div>
+                            {loan.pickupLocation && (
+                              <div className="text-[10px] text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md font-semibold inline-flex items-center gap-1 mt-1">
+                                <MapPin className="w-3 h-3 text-emerald-600 shrink-0" />
+                                <span>{loan.pickupLocation}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-slate-700">
                             <div>{formatDateIndo(loan.startDate)}</div>

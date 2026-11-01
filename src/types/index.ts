@@ -58,6 +58,8 @@ export interface LoanRequest {
   approvedAt?: string;
   returnedAt?: string;
   approvedBy?: string;
+  pickupLocation?: string; // Lokasi pengambilan alat yang ditentukan admin
+  adminNotes?: string;
 }
 
 export type EventCategory = 
@@ -86,6 +88,7 @@ export interface AppSettings {
   appTitle: string; // e.g. "SIPAT Media" (dapat diubah admin)
   pesantrenName: string; // e.g. "Pondok Pesantren Darul Hikmah" (dapat diubah admin)
   mediaTeamName: string; // e.g. "Biro Media & Dokumentasi" (dapat diubah admin)
+  defaultPickupLocation?: string; // e.g. "Ruang Media Center" (lokasi bawaan pengambilan alat)
   logoType?: 'preset' | 'custom_url';
   logoPreset?: string; // 'camera' | 'video' | 'radio' | 'mosque' | 'film' | 'sparkles' | 'tv'
   logoCustomUrl?: string; // Custom uploaded image data-url or link

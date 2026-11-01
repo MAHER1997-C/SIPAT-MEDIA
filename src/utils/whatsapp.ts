@@ -80,10 +80,16 @@ _Dikirim via ${settings.appTitle || 'SIPAT Media'}_`;
 /**
  * Format pesan konfirmasi persetujuan oleh Admin untuk dikirim ke peminjam
  */
-export function generateApprovalWhatsAppMessage(request: LoanRequest, adminName: string): string {
+export function generateApprovalWhatsAppMessage(
+  request: LoanRequest, 
+  adminName: string,
+  pickupLocation?: string
+): string {
   const itemList = request.items
     .map((item, idx) => `  ${idx + 1}. ${item.itemName}`)
     .join('\n');
+
+  const location = pickupLocation || request.pickupLocation || 'Studio Biro Media & Dokumentasi';
 
   return `*KONFIRMASI PERSETUJUAN PEMINJAMAN ALAT MEDIA*
 
@@ -95,14 +101,15 @@ Alhamdulillah, pengajuan peminjaman alat dengan rincian:
 👤 *Penanggung Jawab*: *${request.borrowerName}*
 STATUS: ✅ *DISETUJUI & SIAP DIAMBIL*
 
-📦 *Item*:
+📦 *Item yang Dipinjam*:
 ${itemList}
 
-📍 *Pengambilan*: Studio Biro Media & Dokumentasi
+📍 *Tempat Pengambilan Alat*: *${location}*
 👤 *Disetujui Oleh*: ${adminName}
-Jadwal Pengambilan: ${formatDateIndo(request.startDate)} pk ${request.startTime || '08:00'} WIB.
+⏰ *Jadwal Pengambilan*: ${formatDateIndo(request.startDate)} pk ${request.startTime || '08:00'} WIB
 
-_Mohon periksa kondisi fisik dan kelengkapan baterai/kabel sebelum dibawa._
+_Catatan:_
+_Mohon periksa fisik, kelengkapan baterai, kabel, dan tas sebelum meninggalkan tempat pengambilan._
 Terima kasih. Wassalamu'alaikum Wr. Wb.`;
 }
 

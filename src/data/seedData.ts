@@ -4,6 +4,7 @@ export const initialSettings: AppSettings = {
   appTitle: "SIPAT Media",
   pesantrenName: "Pondok Pesantren Darul Hikmah",
   mediaTeamName: "Biro Media & Dokumentasi",
+  defaultPickupLocation: "Studio Biro Media & Dokumentasi",
   logoType: "preset",
   logoPreset: "camera",
   logoCustomUrl: "",

@@ -192,18 +192,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Nama Biro / Tim Media Pesantren
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Contoh: Biro Media & Dokumentasi"
-                value={formData.mediaTeamName}
-                onChange={(e) => setFormData({ ...formData, mediaTeamName: e.target.value })}
-                className="w-full px-3.5 py-2.5 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 text-slate-900"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Nama Biro / Tim Media Pesantren
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Biro Media & Dokumentasi"
+                  value={formData.mediaTeamName}
+                  onChange={(e) => setFormData({ ...formData, mediaTeamName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Lokasi Standar Pengambilan Alat</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Contoh: Studio Biro Media & Dokumentasi"
+                  value={formData.defaultPickupLocation || ''}
+                  onChange={(e) => setFormData({ ...formData, defaultPickupLocation: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 text-slate-900"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Otomatis disarankan saat admin konfirmasi peminjaman.
+                </p>
+              </div>
             </div>
           </div>
 

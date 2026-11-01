@@ -159,9 +159,11 @@ export default function App() {
   };
 
   // Loan Approval by Admin
-  const handleApproveLoan = (loanId: string, adminName: string) => {
+  const handleApproveLoan = (loanId: string, adminName: string, pickupLocation?: string) => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return;
+
+    const finalPickupLocation = (pickupLocation && pickupLocation.trim()) || settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi';
 
     // Update loan status
     const updatedLoans = loans.map((l) => {
@@ -171,6 +173,7 @@ export default function App() {
           status: 'Disetujui' as const,
           approvedAt: new Date().toISOString(),
           approvedBy: adminName,
+          pickupLocation: finalPickupLocation,
         };
       }
       return l;
@@ -196,7 +199,7 @@ export default function App() {
     });
     handleUpdateItems(updatedItems);
 
-    showToast(`Peminjaman ${loanId} telah disetujui.`);
+    showToast(`Peminjaman ${loanId} disetujui. Pengambilan di: ${finalPickupLocation}`);
   };
 
   // Loan Return by Admin
