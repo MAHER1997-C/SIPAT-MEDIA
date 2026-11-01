@@ -1,0 +1,507 @@
+import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
+
+export const initialSettings: AppSettings = {
+  appTitle: "SIPAT Media",
+  pesantrenName: "Pondok Pesantren Darul Hikmah",
+  mediaTeamName: "Biro Media & Dokumentasi",
+  logoType: "preset",
+  logoPreset: "camera",
+  logoCustomUrl: "",
+  whatsappGroupLink: "https://chat.whatsapp.com/sample-group-link",
+  mediaLeaderPhone: "6281234567890",
+  adminPin: "1234",
+};
+
+export const initialItems: MediaItem[] = [
+  {
+    id: "ALAT-001",
+    name: "Kamera Sony FX30",
+    category: "Kamera",
+    brand: "Sony",
+    model: "FX30",
+    serialNumber: "SN-001",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Kamera utama video. Lengkap dengan handle audio."
+  },
+  {
+    id: "ALAT-002",
+    name: "Kamera Sony A7 III",
+    category: "Kamera",
+    brand: "Sony",
+    model: "A7 III",
+    serialNumber: "SN-002",
+    condition: "Baik",
+    status: "Sedang Dipinjam",
+    location: "Studio Media",
+    notes: "Dipinjam untuk dokumentasi santri MTs.",
+    currentBorrower: {
+      loanId: "PJM-20261028-001",
+      unitName: "Unit MTs Tahfidz Putri",
+      borrowerName: "Ustazah Fatimah Azzahra",
+      returnDate: "2026-10-30"
+    }
+  },
+  {
+    id: "ALAT-003",
+    name: "Kamera Canon EOS R50",
+    category: "Kamera",
+    brand: "Canon",
+    model: "R50",
+    serialNumber: "SN-003",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Kamera ringan mudah dipakai santri."
+  },
+  {
+    id: "ALAT-004",
+    name: "Lensa Sony 24-70mm GM",
+    category: "Lensa",
+    brand: "Sony",
+    model: "24-70mm",
+    serialNumber: "SN-004",
+    condition: "Baik",
+    status: "Sedang Dipinjam",
+    location: "Studio Media",
+    notes: "Sudah terpasang filter UV pelindung.",
+    currentBorrower: {
+      loanId: "PJM-20261028-001",
+      unitName: "Unit MTs Tahfidz Putri",
+      borrowerName: "Ustazah Fatimah Azzahra",
+      returnDate: "2026-10-30"
+    }
+  },
+  {
+    id: "ALAT-005",
+    name: "Lensa Tele Sony 70-200mm",
+    category: "Lensa",
+    brand: "Sony",
+    model: "70-200mm",
+    serialNumber: "SN-005",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Cocok untuk foto panggung wisuda dari jauh."
+  },
+  {
+    id: "ALAT-006",
+    name: "Mic Wireless DJI Mic 2",
+    category: "Audio & Mic",
+    brand: "DJI",
+    model: "Mic 2",
+    serialNumber: "SN-006",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Isi 2 pemancar + 1 penerima + adapter HP."
+  },
+  {
+    id: "ALAT-007",
+    name: "Mic Wireless Boya",
+    category: "Audio & Mic",
+    brand: "Boya",
+    model: "BY-WM4",
+    serialNumber: "SN-007",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Gunakan baterai AAA baru."
+  },
+  {
+    id: "ALAT-008",
+    name: "Audio Recorder Zoom H6",
+    category: "Audio & Mic",
+    brand: "Zoom",
+    model: "H6",
+    serialNumber: "SN-008",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Untuk rekam suara langsung dari sound masjid."
+  },
+  {
+    id: "ALAT-009",
+    name: "Lampu Godox SL-60W + Softbox",
+    category: "Lighting",
+    brand: "Godox",
+    model: "SL-60W",
+    serialNumber: "SN-009",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Termasuk stand lampu dan kabel colokan."
+  },
+  {
+    id: "ALAT-010",
+    name: "Lampu LED Panel Godox",
+    category: "Lighting",
+    brand: "Godox",
+    model: "LEDP260C",
+    serialNumber: "SN-010",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Cahaya lembut bisa diatur warna hangat/putih."
+  },
+  {
+    id: "ALAT-011",
+    name: "Gimbal DJI RS 3 Pro",
+    category: "Stabilizer & Tripod",
+    brand: "DJI",
+    model: "RS 3 Pro",
+    serialNumber: "SN-011",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Pastikan seimbangkan kamera sebelum dinyalakan."
+  },
+  {
+    id: "ALAT-012",
+    name: "Tripod Video Libec",
+    category: "Stabilizer & Tripod",
+    brand: "Libec",
+    model: "TH-X",
+    serialNumber: "SN-012",
+    condition: "Baik",
+    status: "Sedang Dipinjam",
+    location: "Studio Media",
+    notes: "Tripod kokoh untuk kamera video.",
+    currentBorrower: {
+      loanId: "PJM-20261028-001",
+      unitName: "Unit MTs Tahfidz Putri",
+      borrowerName: "Ustazah Fatimah Azzahra",
+      returnDate: "2026-10-30"
+    }
+  },
+  {
+    id: "ALAT-013",
+    name: "Tripod Beike Top-Down",
+    category: "Stabilizer & Tripod",
+    brand: "Beike",
+    model: "Q999H",
+    serialNumber: "SN-013",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Bisa sorot mushaf Al-Qur'an dari atas."
+  },
+  {
+    id: "ALAT-014",
+    name: "Drone DJI Mini 4 Pro",
+    category: "Drone & Stream",
+    brand: "DJI",
+    model: "Mini 4 Pro",
+    serialNumber: "SN-014",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Khusus dioperasikan oleh kru resmi tim media."
+  },
+  {
+    id: "ALAT-015",
+    name: "Video Switcher ATEM Mini",
+    category: "Drone & Stream",
+    brand: "Blackmagic",
+    model: "ATEM Mini Pro",
+    serialNumber: "SN-015",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Alat pengatur siaran langsung live YouTube."
+  },
+  {
+    id: "ALAT-016",
+    name: "Kabel HDMI 20 Meter",
+    category: "Aksesoris & Kabel",
+    brand: "PX",
+    model: "HDMI 20m",
+    serialNumber: "SN-016",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Gulung rapi setelah selesai digunakan."
+  },
+  {
+    id: "ALAT-017",
+    name: "Baterai Sony Cadangan (2 Pcs) + Charger",
+    category: "Aksesoris & Kabel",
+    brand: "Sony",
+    model: "NP-FZ100",
+    serialNumber: "SN-017",
+    condition: "Baik",
+    status: "Tersedia",
+    location: "Studio Media",
+    notes: "Pastikan di-charge penuh setelah dipakai."
+  },
+  {
+    id: "ALAT-018",
+    name: "Memory Card Sandisk 128GB (2 Pcs)",
+    category: "Aksesoris & Kabel",
+    brand: "SanDisk",
+    model: "Extreme Pro",
+    serialNumber: "SN-018",
+    condition: "Perlu Servis",
+    status: "Dalam Perawatan",
+    location: "Studio Media",
+    notes: "Satu kartu sedang diformat ulang karena error."
+  }
+];
+
+export const initialLoans: LoanRequest[] = [
+  {
+    id: "PJM-20261028-001",
+    unitName: "Unit MTs Tahfidz Putri",
+    borrowerName: "Ustazah Fatimah Azzahra",
+    borrowerPhone: "081298765432",
+    items: [
+      { itemId: "ALAT-002", itemName: "Kamera Sony A7 III", category: "Kamera" },
+      { itemId: "ALAT-004", itemName: "Lensa Sony 24-70mm GM", category: "Lensa" },
+      { itemId: "ALAT-012", itemName: "Tripod Video Libec", category: "Stabilizer & Tripod" }
+    ],
+    startDate: "2026-10-28",
+    startTime: "08:00",
+    endDate: "2026-10-30",
+    endTime: "16:00",
+    purpose: "Dokumentasi Ujian Tasmi' 10 Juz & Khataman Santriwati MTs",
+    status: "Disetujui",
+    createdAt: "2026-10-27T14:30:00Z",
+    approvedAt: "2026-10-27T16:00:00Z",
+    approvedBy: "Admin Media"
+  },
+  {
+    id: "PJM-20261029-002",
+    unitName: "Unit MI Tahfidzul Qur'an",
+    borrowerName: "Ustaz Rahmat Hidayat",
+    borrowerPhone: "085678901234",
+    items: [
+      { itemId: "ALAT-003", itemName: "Kamera Canon EOS R50", category: "Kamera" },
+      { itemId: "ALAT-007", itemName: "Mic Wireless Boya", category: "Audio & Mic" }
+    ],
+    startDate: "2026-10-30",
+    startTime: "07:30",
+    endDate: "2026-10-30",
+    endTime: "12:00",
+    purpose: "Perekaman Video Lomba Dai Cilik dan Murottal Juz 30 MI",
+    status: "Menunggu Konfirmasi",
+    createdAt: "2026-10-29T04:15:00Z"
+  },
+  {
+    id: "PJM-20261025-001",
+    unitName: "Bagian Pengasuhan & Kesantrian",
+    borrowerName: "Ustaz Syamsul Hadi",
+    borrowerPhone: "081345678912",
+    items: [
+      { itemId: "ALAT-006", itemName: "Mic Wireless DJI Mic 2", category: "Audio & Mic" }
+    ],
+    startDate: "2026-10-25",
+    startTime: "19:30",
+    endDate: "2026-10-25",
+    endTime: "22:00",
+    purpose: "Kajian Malam Ahad Bersama Pengasuh Santri Putra",
+    status: "Selesai",
+    createdAt: "2026-10-24T10:00:00Z",
+    approvedAt: "2026-10-24T11:20:00Z",
+    returnedAt: "2026-10-25T22:30:00Z",
+    returnNotes: "Dikembalikan lengkap dan bersih."
+  }
+];
+
+export const initialEvents: MediaEvent[] = [
+  {
+    id: "EVT-001",
+    title: "Dokumentasi Tasmi' Al-Qur'an Santri MTs",
+    category: "Liputan Santri",
+    startDate: "2026-10-30",
+    startTime: "05:00",
+    endDate: "2026-10-30",
+    endTime: "17:00",
+    location: "Ruang Markaz Al-Qur'an",
+    crewAssigned: ["Ustazah Fatimah", "Tim MTs"],
+    requiredGear: ["Kamera Sony A7 III", "Tripod Libec"],
+    description: "Ujian sima'an 10 juz sekali duduk santriwati kelas IX."
+  },
+  {
+    id: "EVT-002",
+    title: "Muhadharah & Khitobah Santri Putra",
+    category: "Internal Pesantren",
+    startDate: "2026-10-30",
+    startTime: "19:30",
+    endDate: "2026-10-30",
+    endTime: "21:30",
+    location: "Gedung Serbaguna Santri",
+    crewAssigned: ["Farhan", "Rifqi"],
+    requiredGear: ["Kamera Canon R50", "Mic Boya"],
+    description: "Latihan pidato 3 bahasa santri asrama putra."
+  },
+  {
+    id: "EVT-003",
+    title: "Lomba Dai Cilik & Murottal Juz 30 MI",
+    category: "Liputan Santri",
+    startDate: "2026-10-31",
+    startTime: "08:00",
+    endDate: "2026-10-31",
+    endTime: "12:00",
+    location: "Panggung Terbuka Kampus MI",
+    crewAssigned: ["Ustaz Rahmat", "Zaid"],
+    requiredGear: ["Kamera Sony A7 III", "Mic Wireless DJI Mic 2"],
+    description: "Perekaman video unjuk bakat santri cilik MI Tahfidz."
+  },
+  {
+    id: "EVT-004",
+    title: "Siaran Senja Qasidah Rebana Santriwati",
+    category: "Produksi Konten",
+    startDate: "2026-10-31",
+    startTime: "16:30",
+    endDate: "2026-10-31",
+    endTime: "17:45",
+    location: "Taman Asrama Putri",
+    crewAssigned: ["Tim Media Putri"],
+    requiredGear: ["Kamera Sony FX30", "Gimbal DJI"],
+    description: "Konten video reel Instagram dan TikTok resmi pondok."
+  },
+  {
+    id: "EVT-005",
+    title: "Kuliah Subuh & Bedah Kitab Fathul Qorib",
+    category: "Kajian / Tabligh",
+    startDate: "2026-11-01",
+    startTime: "05:30",
+    endDate: "2026-11-01",
+    endTime: "07:00",
+    location: "Masjid Jami' Pesantren",
+    crewAssigned: ["Ihsan"],
+    requiredGear: ["Audio Recorder Zoom H6", "Tripod"],
+    description: "Rekaman audio kajian kitab kuning untuk arsip dakwah digital."
+  },
+  {
+    id: "EVT-006",
+    title: "Live Streaming Kajian Fiqih Bersama Pengasuh",
+    category: "Live Streaming",
+    startDate: "2026-11-01",
+    startTime: "19:45",
+    endDate: "2026-11-01",
+    endTime: "21:30",
+    location: "Studio Siaran Media",
+    crewAssigned: ["Ihsan", "Rifqi"],
+    requiredGear: ["Kamera Sony FX30", "Lampu Godox", "DJI Mic 2", "ATEM Mini"],
+    description: "Kajian rutin bulanan disiarkan langsung ke YouTube resmi pondok."
+  },
+  {
+    id: "EVT-007",
+    title: "Podcast Santri Inspiratif Episode 14",
+    category: "Produksi Konten",
+    startDate: "2026-11-02",
+    startTime: "09:00",
+    endDate: "2026-11-02",
+    endTime: "11:30",
+    location: "Studio Podcast Media",
+    crewAssigned: ["Ust. Fauzi", "Ihsan"],
+    requiredGear: ["2x Sony A7 III", "DJI Mic 2", "LED Panel Godox"],
+    description: "Wawancara santri peraih medali olimpiade sains nasional."
+  },
+  {
+    id: "EVT-008",
+    title: "Pelatihan Videografi & Live Stream Santri",
+    category: "Internal Pesantren",
+    startDate: "2026-11-03",
+    startTime: "13:30",
+    endDate: "2026-11-03",
+    endTime: "15:30",
+    location: "Lab Multimedia",
+    crewAssigned: ["Farhan", "Zaid"],
+    requiredGear: ["Kamera Canon R50", "Tripod", "Kabel HDMI"],
+    description: "Workshop dasar operasional kamera untuk kader media pondok."
+  },
+  {
+    id: "EVT-009",
+    title: "Malam Pembacaan Maulid Simthudduror",
+    category: "Kajian / Tabligh",
+    startDate: "2026-11-04",
+    startTime: "19:30",
+    endDate: "2026-11-04",
+    endTime: "21:15",
+    location: "Aula Utama Pesantren",
+    crewAssigned: ["Rifqi", "Farhan"],
+    requiredGear: ["Sony A7 III", "Mic Boya", "Zoom H6"],
+    description: "Dokumentasi maulid malam Kamis santri dan asatidz."
+  },
+  {
+    id: "EVT-010",
+    title: "Wisuda Akbar Tahfidz 30 Juz Ke-XII",
+    category: "Liputan Santri",
+    startDate: "2026-11-05",
+    startTime: "07:30",
+    endDate: "2026-11-05",
+    endTime: "13:30",
+    location: "Aula Utama Masjid Pesantren",
+    crewAssigned: ["Ust. Ahmad Fauzi", "Ihsan", "Farhan", "Zaid"],
+    requiredGear: ["Sony FX30", "Sony A7 III", "Lensa Tele", "ATEM Mini", "Drone"],
+    description: "Acara wisuda 75 santri hafidz mutqin 30 juz. Live streaming YouTube dan foto wisuda."
+  },
+  {
+    id: "EVT-011",
+    title: "Live Streaming Tabligh Akbar Ulama Yaman",
+    category: "Live Streaming",
+    startDate: "2026-11-06",
+    startTime: "09:00",
+    endDate: "2026-11-06",
+    endTime: "11:45",
+    location: "Masjid Agung Pesantren",
+    crewAssigned: ["Ust. Fauzi", "Ihsan", "Rifqi"],
+    requiredGear: ["Sony FX30", "ATEM Mini", "DJI Mic 2", "Tripod Heavy Duty"],
+    description: "Siaran langsung multikamera ceramah tamu istimewa dari Tarim."
+  },
+  {
+    id: "EVT-012",
+    title: "Kunjungan Studi Banding Pesantren Jawa Timur",
+    category: "Liputan Santri",
+    startDate: "2026-11-07",
+    startTime: "13:30",
+    endDate: "2026-11-07",
+    endTime: "16:00",
+    location: "Gedung Yayasan & Asrama",
+    crewAssigned: ["Zaid"],
+    requiredGear: ["Kamera Canon R50", "Gimbal DJI"],
+    description: "Foto serah terima cenderamata dan tur santri pelopor."
+  },
+  {
+    id: "EVT-013",
+    title: "Syuting Video Ucapan Milad & Doa Pengasuh",
+    category: "Produksi Konten",
+    startDate: "2026-11-08",
+    startTime: "08:30",
+    endDate: "2026-11-08",
+    endTime: "11:00",
+    location: "Kediaman Pengasuh (Ndalem)",
+    crewAssigned: ["Ust. Fauzi", "Ihsan"],
+    requiredGear: ["Sony FX30", "Lampu Godox SL-60W", "DJI Mic 2"],
+    description: "Perekaman doa dan pesan milad ke-35 berdirinya pondok."
+  },
+  {
+    id: "EVT-014",
+    title: "Halaqah Sanad Matan Al-Jazariyah",
+    category: "Kajian / Tabligh",
+    startDate: "2026-11-09",
+    startTime: "19:45",
+    endDate: "2026-11-09",
+    endTime: "21:30",
+    location: "Ruang Pengajian Asatidz",
+    crewAssigned: ["Rifqi"],
+    requiredGear: ["Audio Recorder Zoom H6", "Sony A7 III"],
+    description: "Dokumentasi majelis pengambilan ijazah sanad tajwid."
+  },
+  {
+    id: "EVT-015",
+    title: "Produksi Video Profil Pondok Pesantren 2026",
+    category: "Produksi Konten",
+    startDate: "2026-11-10",
+    startTime: "08:00",
+    endDate: "2026-11-12",
+    endTime: "16:00",
+    location: "Kampus Putra & Putri Pesantren",
+    crewAssigned: ["Ust. Ahmad Fauzi", "Ihsan", "Santri Media"],
+    requiredGear: ["Kamera Sony FX30", "Gimbal DJI", "Drone DJI Mini 4 Pro"],
+    description: "Pengambilan gambar sinematik halaqah Qur'an, asrama, dan fasilitas santri."
+  }
+];

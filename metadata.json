@@ -1,0 +1,6 @@
+{
+  "name": "SIPAT Media - Pondok Pesantren Tahfidzul Qur'an",
+  "description": "Sistem Informasi Peminjaman Alat, Inventaris Media, dan Kalender Kegiatan Tim Media Pondok Pesantren Tahfidzul Qur'an terintegrasi WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

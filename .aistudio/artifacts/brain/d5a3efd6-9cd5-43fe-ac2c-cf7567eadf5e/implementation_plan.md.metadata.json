@@ -1,0 +1,6 @@
+{
+  "summary":  "Rencana implementasi aplikasi Sistem Manajemen Media & Peminjaman Alat untuk Tim Media Pondok Pesantren Tahfidzul Qur'an, mencakup modul inventaris alat, kalender kegiatan, formulir peminjaman checklist antar-unit, format otomatis kirim pesan WhatsApp ke grup media, serta sistem autentikasi dua peran (Admin via PIN & Unit/Umum).",
+  "updatedAt":  "2026-10-29T12:22:39.262406681Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}
