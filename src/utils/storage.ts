@@ -2,9 +2,9 @@ import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
 import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData';
 
 const STORAGE_KEYS = {
-  ITEMS: 'sipat_media_items_v2',
-  LOANS: 'sipat_media_loans_v2',
-  EVENTS: 'sipat_media_events_v3',
+  ITEMS: 'sipat_media_items_v4',
+  LOANS: 'sipat_media_loans_v4',
+  EVENTS: 'sipat_media_events_v4',
   SETTINGS: 'sipat_media_settings_v1',
   ADMIN_SESSION: 'sipat_media_admin_logged_in_v1',
 };
@@ -61,7 +61,7 @@ export function getStoredEvents(): MediaEvent[] {
       return initialEvents;
     }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length < 8) {
+    if (!Array.isArray(parsed)) {
       localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(initialEvents));
       return initialEvents;
     }
