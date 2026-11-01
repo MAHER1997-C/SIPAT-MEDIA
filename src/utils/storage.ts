@@ -1,16 +1,39 @@
 import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
 import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData';
 
+const CURRENT_VERSION = 'v5_27_items_clean';
+const VERSION_KEY = 'sipat_media_version_sync';
+
 const STORAGE_KEYS = {
-  ITEMS: 'sipat_media_items_v4',
-  LOANS: 'sipat_media_loans_v4',
-  EVENTS: 'sipat_media_events_v4',
+  ITEMS: 'sipat_media_items_v5',
+  LOANS: 'sipat_media_loans_v5',
+  EVENTS: 'sipat_media_events_v5',
   SETTINGS: 'sipat_media_settings_v1',
   ADMIN_SESSION: 'sipat_media_admin_logged_in_v1',
 };
 
+// Pastikan browser pengunjung yang sebelumnya menyimpan data lama langsung otomatis diperbarui ke data 27 inventaris terbaru
+function ensureLatestVersionMigration(): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const currentVer = localStorage.getItem(VERSION_KEY);
+    if (currentVer !== CURRENT_VERSION) {
+      localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(initialItems));
+      localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(initialLoans));
+      localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(initialEvents));
+      localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
+    }
+  } catch (e) {
+    console.error('Error migrating stored media data', e);
+  }
+}
+
+// Jalankan migrasi otomatis saat modul dimuat
+ensureLatestVersionMigration();
+
 export function getStoredItems(): MediaItem[] {
   try {
+    ensureLatestVersionMigration();
     const raw = localStorage.getItem(STORAGE_KEYS.ITEMS);
     if (!raw) {
       localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(initialItems));
