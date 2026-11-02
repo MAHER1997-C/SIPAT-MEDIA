@@ -3,9 +3,14 @@ import { AppSettings } from '../types';
 import { 
   X, Save, Settings, Download, Upload, RefreshCw, KeyRound, 
   MessageSquare, CheckCircle, Camera, Video, Radio, Landmark, 
-  Film, Tv, Sparkles, Image as ImageIcon, Trash2 
+  Film, Tv, Sparkles, Image as ImageIcon, Trash2,
+  Link, Copy, Check, Share2
 } from 'lucide-react';
-import { exportBackupData, importBackupData, resetToSeedData } from '../utils/storage';
+import { 
+  exportBackupData, importBackupData, resetToSeedData,
+  encodeSettingsToCode, decodeSettingsFromCode 
+} from '../utils/storage';
+import { copyToClipboard } from '../utils/whatsapp';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -35,8 +40,49 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [formData, setFormData] = useState<AppSettings>(settings);
   const [successMsg, setSuccessMsg] = useState('');
   const [importStatus, setImportStatus] = useState<string>('');
+  const [pasteCodeInput, setPasteCodeInput] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleCopySyncLink = async () => {
+    const code = encodeSettingsToCode(formData);
+    const syncUrl = `${window.location.origin}${window.location.pathname}?sync_settings=${code}`;
+    const ok = await copyToClipboard(syncUrl);
+    if (ok) {
+      setCopiedLink(true);
+      setSuccessMsg('Tautan sinkronisasi disalin! Buka tautan ini di Laptop/HP lain untuk menerapkan pengaturan.');
+      setTimeout(() => setCopiedLink(false), 3000);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    }
+  };
+
+  const handleCopySyncCode = async () => {
+    const code = encodeSettingsToCode(formData);
+    const ok = await copyToClipboard(code);
+    if (ok) {
+      setCopiedCode(true);
+      setSuccessMsg('Kode teks pengaturan berhasil disalin ke clipboard!');
+      setTimeout(() => setCopiedCode(false), 3000);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    }
+  };
+
+  const handleApplyPasteCode = () => {
+    if (!pasteCodeInput.trim()) return;
+    const decoded = decodeSettingsFromCode(pasteCodeInput);
+    if (decoded) {
+      setFormData(decoded);
+      onSaveSettings(decoded);
+      setPasteCodeInput('');
+      setSuccessMsg(`Berhasil! Pengaturan lembaga "${decoded.pesantrenName}" berhasil diterapkan.`);
+      setTimeout(() => setSuccessMsg(''), 3500);
+    } else {
+      setImportStatus('Kode tidak valid atau format salah.');
+      setTimeout(() => setImportStatus(''), 3000);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -440,6 +486,79 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 >
                   <RefreshCw className="w-3.5 h-3.5 text-amber-800" />
                   <span>Reset ke Data Contoh Bawaan</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Cross-Device Settings Sync Card */}
+            <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200/80 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-emerald-950 flex items-center gap-1.5">
+                  <Share2 className="w-4 h-4 text-emerald-700" />
+                  <span>Sinkronisasi Pengaturan ke Laptop / HP Lain</span>
+                </span>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-full">
+                  1-Klik Cepat
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-900 leading-relaxed">
+                Salin tautan atau kode di bawah ini dari HP yang sudah Anda atur, lalu buka di Laptop atau kirim via WhatsApp ke perangkat lain untuk langsung menyinkronkan nama pesantren, logo, lokasi, dan nomor kontak seketika.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={handleCopySyncLink}
+                  className="px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                >
+                  {copiedLink ? (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Tautan Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Link className="w-3.5 h-3.5" />
+                      <span>Salin Tautan Sinkronisasi</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopySyncCode}
+                  className="px-3 py-2 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 border border-emerald-200"
+                >
+                  {copiedCode ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Kode Tersalin!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Salin Kode Teks</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Paste code input */}
+              <div className="pt-2 border-t border-emerald-200/60 flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Atau tempel kode sinkronisasi dari HP lain di sini..."
+                  value={pasteCodeInput}
+                  onChange={(e) => setPasteCodeInput(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-white border border-emerald-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyPasteCode}
+                  disabled={!pasteCodeInput.trim()}
+                  className="px-3 py-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 rounded-xl transition-all shadow-2xs shrink-0"
+                >
+                  Terapkan
                 </button>
               </div>
             </div>

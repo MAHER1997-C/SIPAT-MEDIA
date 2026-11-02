@@ -5,7 +5,8 @@ import {
   getStoredLoans, saveStoredLoans, 
   getStoredEvents, saveStoredEvents, 
   getStoredSettings, saveStoredSettings, 
-  getAdminSession, setAdminSession 
+  getAdminSession, setAdminSession,
+  decodeSettingsFromCode
 } from './utils/storage';
 import { Navbar } from './components/Navbar';
 import { DashboardHomeView } from './components/DashboardHomeView';
@@ -51,13 +52,32 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Load stored data on mount
+  // Load stored data on mount & check for URL sync
   useEffect(() => {
     setItems(getStoredItems());
     setLoans(getStoredLoans());
     setEvents(getStoredEvents());
-    setSettings(getStoredSettings());
     setIsAdmin(getAdminSession());
+
+    // Cek jika URL membawa parameter sinkronisasi pengaturan (?sync_settings=...)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const syncCode = urlParams.get('sync_settings');
+      if (syncCode) {
+        const decoded = decodeSettingsFromCode(syncCode);
+        if (decoded) {
+          saveStoredSettings(decoded);
+          setSettings(decoded);
+          showToast(`Sinkronisasi berhasil! Data pesantren: "${decoded.pesantrenName}" telah diterapkan.`);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Error auto-syncing settings from URL', e);
+    }
+
+    setSettings(getStoredSettings());
   }, []);
 
   // Save changes to storage

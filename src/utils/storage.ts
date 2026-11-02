@@ -192,3 +192,47 @@ export function resetToSeedData(): void {
   localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(initialEvents));
   localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(initialSettings));
 }
+
+/**
+ * Mengubah pengaturan (nama pesantren, logo, lokasi, kontak) menjadi kode sinkronisasi ringkas
+ */
+export function encodeSettingsToCode(settings: AppSettings): string {
+  try {
+    const jsonStr = JSON.stringify(settings);
+    return btoa(
+      encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+        String.fromCharCode(parseInt(p1, 16))
+      )
+    );
+  } catch (e) {
+    console.error('Error encoding settings', e);
+    return '';
+  }
+}
+
+/**
+ * Membaca kembali kode sinkronisasi menjadi objek pengaturan
+ */
+export function decodeSettingsFromCode(code: string): AppSettings | null {
+  try {
+    const clean = code.trim();
+    if (!clean) return null;
+    const jsonStr = decodeURIComponent(
+      Array.prototype.map
+        .call(atob(clean), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && typeof parsed === 'object' && (parsed.pesantrenName || parsed.appTitle)) {
+      return {
+        ...initialSettings,
+        ...parsed,
+      };
+    }
+    return null;
+  } catch (e) {
+    console.error('Error decoding settings code', e);
+    return null;
+  }
+}
+
