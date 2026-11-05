@@ -183,7 +183,7 @@ export default function App() {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return;
 
-    const finalPickupLocation = (pickupLocation && pickupLocation.trim()) || settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi';
+    const finalPickupLocation = (pickupLocation && pickupLocation.trim()) || settings.defaultPickupLocation || 'Kantor Media';
 
     // Update loan status
     const updatedLoans = loans.map((l) => {

@@ -41,9 +41,9 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
   // Approval dialog state (with pickup location)
   const [approvingLoan, setApprovingLoan] = useState<LoanRequest | null>(null);
   const [pickupLocationInput, setPickupLocationInput] = useState(
-    settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi'
+    settings.defaultPickupLocation || 'Kantor Media'
   );
-  const [approverNameInput, setApproverNameInput] = useState('Admin Media Pondok');
+  const [approverNameInput, setApproverNameInput] = useState('Admin Qoryah TV');
   const [sendWaOnApproval, setSendWaOnApproval] = useState(true);
 
   // Return dialog state
@@ -85,8 +85,8 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
 
   const handleOpenApprovalDialog = (loan: LoanRequest) => {
     setApprovingLoan(loan);
-    setPickupLocationInput(settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi');
-    setApproverNameInput('Admin Media Pondok');
+    setPickupLocationInput(settings.defaultPickupLocation || 'Kantor Media');
+    setApproverNameInput('Admin Qoryah TV');
     setSendWaOnApproval(true);
   };
 
@@ -94,8 +94,8 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
     e.preventDefault();
     if (!approvingLoan) return;
 
-    const chosenLocation = pickupLocationInput.trim() || settings.defaultPickupLocation || 'Studio Biro Media & Dokumentasi';
-    const adminName = approverNameInput.trim() || 'Admin Media Pondok';
+    const chosenLocation = pickupLocationInput.trim() || settings.defaultPickupLocation || 'Kantor Media';
+    const adminName = approverNameInput.trim() || 'Admin Qoryah TV';
 
     onApproveLoan(approvingLoan.id, adminName, chosenLocation);
 
@@ -483,7 +483,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
             </div>
 
             <p className="text-xs text-slate-600 leading-relaxed">
-              Memverifikasi bahwa seluruh unit barang dari <strong className="text-slate-900">{returningLoan.unitName}</strong> telah diterima kembali di Studio Media. Status inventaris akan otomatis diubah menjadi <strong>Tersedia</strong>.
+              Memverifikasi bahwa seluruh unit barang dari <strong className="text-slate-900">{returningLoan.unitName}</strong> telah diterima kembali di Kantor Media. Status inventaris akan otomatis diubah menjadi <strong>Tersedia</strong>.
             </p>
 
             <form onSubmit={handleConfirmReturn} className="space-y-3">
@@ -625,12 +625,12 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                 {/* Preset Chips */}
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    'Studio Biro Media & Dokumentasi',
-                    'Ruang Media Center Lt. 2',
-                    'Studio Podcast',
-                    'Gudang Alat Media',
-                    'Kantor Sekretariat Pondok',
-                    'Pos Keamanan Utama',
+                    'Kantor Media',
+                    'Studio Podcast Qoryah TV',
+                    'Ruang Media Center',
+                    'Gudang Alat',
+                    'Kantor Sekretariat PPTQ',
+                    'Pos Satpam Utama',
                   ].map((preset) => (
                     <button
                       key={preset}
@@ -652,7 +652,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                   <input
                     type="text"
                     required
-                    placeholder="Tulis tempat pengambilan (misal: Ruang Media Center Lt. 2, Lemari B)..."
+                    placeholder="Tulis tempat pengambilan (misal: Kantor Media, Lemari B)..."
                     value={pickupLocationInput}
                     onChange={(e) => setPickupLocationInput(e.target.value)}
                     className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900 placeholder-slate-400"
@@ -672,7 +672,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                   type="text"
                   value={approverNameInput}
                   onChange={(e) => setApproverNameInput(e.target.value)}
-                  placeholder="Admin Media Pondok"
+                  placeholder="Admin Qoryah TV"
                   className="w-full px-3.5 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-900"
                 />
               </div>
@@ -689,7 +689,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                 <label htmlFor="sendWaApproval" className="text-xs text-emerald-950 font-medium cursor-pointer">
                   <strong>Buka WhatsApp otomatis untuk kirim konfirmasi ke peminjam</strong>
                   <span className="block text-[11px] text-emerald-800 mt-0.5">
-                    Pesan otomatis mencakup rincian item, jadwal, dan tempat pengambilan: <em>"{pickupLocationInput || 'Studio Media'}"</em>
+                    Pesan otomatis mencakup rincian item, jadwal, dan tempat pengambilan: <em>"{pickupLocationInput || 'Kantor Media'}"</em>
                   </span>
                 </label>
               </div>

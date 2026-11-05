@@ -65,7 +65,7 @@ export const ItemModal: React.FC<ItemModalProps> = ({
       serialNumber: initialItem?.serialNumber || '-',
       condition: formData.condition || 'Baik',
       status: formData.status || 'Tersedia',
-      location: initialItem?.location || 'Studio Media',
+      location: initialItem?.location || 'Kantor Media',
       notes: formData.notes?.trim() || '',
       currentBorrower: initialItem?.currentBorrower,
     });

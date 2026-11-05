@@ -2,11 +2,11 @@ import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
 
 export const initialSettings: AppSettings = {
   appTitle: "SIPAT Media",
-  pesantrenName: "Pondok Pesantren Darul Hikmah",
-  mediaTeamName: "Biro Media & Dokumentasi",
-  defaultPickupLocation: "Studio Biro Media & Dokumentasi",
+  pesantrenName: "PPTQ Qoryatul Qur'an",
+  mediaTeamName: "Qoryah TV",
+  defaultPickupLocation: "Kantor Media",
   logoType: "preset",
-  logoPreset: "camera",
+  logoPreset: "tv",
   logoCustomUrl: "",
   whatsappGroupLink: "https://chat.whatsapp.com/sample-group-link",
   mediaLeaderPhone: "6281234567890",
@@ -23,7 +23,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "ML-01",
     condition: "Perlu Servis",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Perlu service Shutter"
   },
   {
@@ -35,7 +35,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "TK-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Kondisi baik"
   },
   {
@@ -47,7 +47,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "MMC-01-03",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "3 pcs memory card kondisi baik"
   },
   {
@@ -59,7 +59,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "LP-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Kondisi baik"
   },
   {
@@ -71,7 +71,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "MS-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Kondisi baik"
   },
   {
@@ -83,7 +83,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "MN-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Kondisi baik"
   },
   {
@@ -95,7 +95,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "DRN-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Kondisi baik"
   },
   {
@@ -107,7 +107,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "DRN-02",
     condition: "Perlu Servis",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Baterai kembung"
   },
   {
@@ -119,7 +119,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "HDD-01-04",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "Total 4 unit (3 penuh, 1 siap pakai)"
   },
   {
@@ -131,7 +131,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "CC-01",
     condition: "Perlu Servis",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit, baterai drop"
   },
   {
@@ -143,7 +143,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "TK-01-02",
     condition: "Perlu Servis",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "2 unit (1 unit hilang komponen)"
   },
   {
@@ -155,7 +155,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "TL-01-03",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "3 unit light stand kondisi baik"
   },
   {
@@ -167,7 +167,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "LT-01-03",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "3 unit lampu kondisi baik"
   },
   {
@@ -179,7 +179,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "MW-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit mic wireless kondisi baik"
   },
   {
@@ -191,7 +191,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "HDMI-20M-01-04",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "4 pcs kabel HDMI 20m kondisi baik"
   },
   {
@@ -203,7 +203,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "HDMI-PDK-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 pcs kabel HDMI pendek kondisi baik"
   },
   {
@@ -215,7 +215,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "LNS-01-03",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "3 pcs lensa kondisi baik"
   },
   {
@@ -227,7 +227,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "SC-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit soundcard kondisi baik"
   },
   {
@@ -239,7 +239,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "REF-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit reflektor kondisi baik"
   },
   {
@@ -251,7 +251,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "LMR-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit lemari kecil studio kondisi baik"
   },
   {
@@ -263,7 +263,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "CR-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 pcs card reader kondisi baik"
   },
   {
@@ -275,7 +275,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "TRM-01-02",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "2 unit terminal listrik colokan kondisi baik"
   },
   {
@@ -287,7 +287,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "STB-CAM-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit stabilizer kamera kondisi baik"
   },
   {
@@ -299,7 +299,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "STB-HP-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit stabilizer HP kondisi baik"
   },
   {
@@ -311,7 +311,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "HP-MI-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit HP Xiaomi kondisi baik"
   },
   {
@@ -323,7 +323,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "TM-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit tas media kecil kondisi baik"
   },
   {
@@ -335,7 +335,7 @@ export const initialItems: MediaItem[] = [
     serialNumber: "TL-01",
     condition: "Baik",
     status: "Tersedia",
-    location: "Studio Media",
+    location: "Kantor Media",
     notes: "1 unit tas laptop kondisi baik"
   }
 ];

@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { 
   exportBackupData, importBackupData, resetToSeedData,
-  encodeSettingsToCode, decodeSettingsFromCode 
+  encodeSettingsToCode, decodeSettingsFromCode,
+  exportSettingsJson, importSettingsJson 
 } from '../utils/storage';
 import { copyToClipboard } from '../utils/whatsapp';
 
@@ -47,7 +48,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   if (!isOpen) return null;
 
   const handleCopySyncLink = async () => {
-    const code = encodeSettingsToCode(formData);
+    const code = encodeSettingsToCode(formData, true);
     const syncUrl = `${window.location.origin}${window.location.pathname}?sync_settings=${code}`;
     const ok = await copyToClipboard(syncUrl);
     if (ok) {
@@ -59,7 +60,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   const handleCopySyncCode = async () => {
-    const code = encodeSettingsToCode(formData);
+    const code = encodeSettingsToCode(formData, true);
     const ok = await copyToClipboard(code);
     if (ok) {
       setCopiedCode(true);
@@ -67,6 +68,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setTimeout(() => setCopiedCode(false), 3000);
       setTimeout(() => setSuccessMsg(''), 4000);
     }
+  };
+
+  const handleExportSettingsFile = () => {
+    const jsonStr = exportSettingsJson(formData);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pengaturan_pesantren_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setSuccessMsg('File pengaturan JSON berhasil diunduh!');
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  const handleImportSettingsFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const imported = importSettingsJson(content);
+      if (imported) {
+        setFormData(imported);
+        onSaveSettings(imported);
+        setSuccessMsg(`Berhasil! Pengaturan "${imported.pesantrenName}" berhasil diterapkan.`);
+        setTimeout(() => setSuccessMsg(''), 3500);
+      } else {
+        setImportStatus('Gagal membaca file pengaturan JSON. Pastikan file sesuai.');
+        setTimeout(() => setImportStatus(''), 3000);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleApplyPasteCode = () => {
@@ -259,7 +294,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Contoh: Studio Biro Media & Dokumentasi"
+                  placeholder="Contoh: Kantor Media"
                   value={formData.defaultPickupLocation || ''}
                   onChange={(e) => setFormData({ ...formData, defaultPickupLocation: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50 text-slate-900"
@@ -510,6 +545,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="button"
                   onClick={handleCopySyncLink}
                   className="px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
+                  title="Salin tautan untuk dibuka langsung di browser laptop"
                 >
                   {copiedLink ? (
                     <>
@@ -519,7 +555,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   ) : (
                     <>
                       <Link className="w-3.5 h-3.5" />
-                      <span>Salin Tautan Sinkronisasi</span>
+                      <span>1. Salin Tautan Sinkronisasi (Untuk Laptop)</span>
                     </>
                   )}
                 </button>
@@ -528,6 +564,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="button"
                   onClick={handleCopySyncCode}
                   className="px-3 py-2 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 border border-emerald-200"
+                  title="Salin kode teks pengaturan"
                 >
                   {copiedCode ? (
                     <>
@@ -541,13 +578,34 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </>
                   )}
                 </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportSettingsFile}
+                  className="px-3 py-2 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 border border-emerald-200"
+                  title="Unduh file pengaturan (termasuk logo gambar penuh)"
+                >
+                  <Download className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Unduh File Pengaturan (.json)</span>
+                </button>
+
+                <label className="px-3 py-2 text-xs font-bold text-emerald-900 bg-white hover:bg-emerald-100 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 border border-emerald-200 cursor-pointer">
+                  <Upload className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Impor Pengaturan dari File (.json)</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportSettingsFile}
+                    className="hidden"
+                  />
+                </label>
               </div>
 
               {/* Paste code input */}
               <div className="pt-2 border-t border-emerald-200/60 flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Atau tempel kode sinkronisasi dari HP lain di sini..."
+                  placeholder="Atau tempel kode sinkronisasi di sini..."
                   value={pasteCodeInput}
                   onChange={(e) => setPasteCodeInput(e.target.value)}
                   className="flex-1 px-3 py-1.5 text-xs rounded-xl bg-white border border-emerald-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-slate-400"

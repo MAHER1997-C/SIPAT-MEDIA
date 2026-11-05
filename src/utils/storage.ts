@@ -1,7 +1,7 @@
 import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
 import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData';
 
-const CURRENT_VERSION = 'v5_27_items_clean';
+const CURRENT_VERSION = 'v7_pptq_qoryatul_quran_official';
 const VERSION_KEY = 'sipat_media_version_sync';
 
 const STORAGE_KEYS = {
@@ -12,7 +12,7 @@ const STORAGE_KEYS = {
   ADMIN_SESSION: 'sipat_media_admin_logged_in_v1',
 };
 
-// Pastikan browser pengunjung yang sebelumnya menyimpan data lama langsung otomatis diperbarui ke data 27 inventaris terbaru
+// Pastikan browser pengunjung otomatis diperbarui ke PPTQ Qoryatul Qur'an & Qoryah TV
 function ensureLatestVersionMigration(): void {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
@@ -21,6 +21,7 @@ function ensureLatestVersionMigration(): void {
       localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(initialItems));
       localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(initialLoans));
       localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(initialEvents));
+      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(initialSettings));
       localStorage.setItem(VERSION_KEY, CURRENT_VERSION);
     }
   } catch (e) {
@@ -111,9 +112,22 @@ export function getStoredSettings(): AppSettings {
       return initialSettings;
     }
     const parsed = JSON.parse(raw);
+    const pesantrenName = (!parsed.pesantrenName || parsed.pesantrenName === 'Pondok Pesantren Darul Hikmah')
+      ? initialSettings.pesantrenName
+      : parsed.pesantrenName;
+    const mediaTeamName = (!parsed.mediaTeamName || parsed.mediaTeamName === 'Biro Media & Dokumentasi')
+      ? initialSettings.mediaTeamName
+      : parsed.mediaTeamName;
+    const defaultPickupLocation = (!parsed.defaultPickupLocation || parsed.defaultPickupLocation.includes('Studio Biro Media'))
+      ? initialSettings.defaultPickupLocation
+      : parsed.defaultPickupLocation;
+
     return {
       ...initialSettings,
       ...parsed,
+      pesantrenName,
+      mediaTeamName,
+      defaultPickupLocation,
       appTitle: parsed.appTitle || initialSettings.appTitle,
       logoType: parsed.logoType || initialSettings.logoType,
       logoPreset: parsed.logoPreset || initialSettings.logoPreset,
@@ -196,9 +210,17 @@ export function resetToSeedData(): void {
 /**
  * Mengubah pengaturan (nama pesantren, logo, lokasi, kontak) menjadi kode sinkronisasi ringkas
  */
-export function encodeSettingsToCode(settings: AppSettings): string {
+export function encodeSettingsToCode(settings: AppSettings, omitLargeImage = false): string {
   try {
-    const jsonStr = JSON.stringify(settings);
+    let toEncode = settings;
+    if (omitLargeImage && settings.logoCustomUrl && settings.logoCustomUrl.length > 500) {
+      // Hilangkan base64 gambar yang terlalu panjang agar muat di parameter URL browser
+      toEncode = {
+        ...settings,
+        logoCustomUrl: '',
+      };
+    }
+    const jsonStr = JSON.stringify(toEncode);
     return btoa(
       encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) =>
         String.fromCharCode(parseInt(p1, 16))
@@ -232,6 +254,29 @@ export function decodeSettingsFromCode(code: string): AppSettings | null {
     return null;
   } catch (e) {
     console.error('Error decoding settings code', e);
+    return null;
+  }
+}
+
+/**
+ * Ekspor khusus file pengaturan lembaga (termasuk logo gambar penuh)
+ */
+export function exportSettingsJson(settings: AppSettings): string {
+  return JSON.stringify(settings, null, 2);
+}
+
+export function importSettingsJson(jsonStr: string): AppSettings | null {
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && typeof parsed === 'object' && (parsed.pesantrenName || parsed.appTitle)) {
+      return {
+        ...initialSettings,
+        ...parsed,
+      };
+    }
+    return null;
+  } catch (e) {
+    console.error('Error importing settings JSON', e);
     return null;
   }
 }

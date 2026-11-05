@@ -89,7 +89,7 @@ export function generateApprovalWhatsAppMessage(
     .map((item, idx) => `  ${idx + 1}. ${item.itemName}`)
     .join('\n');
 
-  const location = pickupLocation || request.pickupLocation || 'Studio Biro Media & Dokumentasi';
+  const location = pickupLocation || request.pickupLocation || 'Kantor Media';
 
   return `*KONFIRMASI PERSETUJUAN PEMINJAMAN ALAT MEDIA*
 
