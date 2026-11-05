@@ -340,8 +340,227 @@ export const initialItems: MediaItem[] = [
   }
 ];
 
-// Dikosongkan sesuai instruksi user
-export const initialLoans: LoanRequest[] = [];
+export const initialLoans: LoanRequest[] = [
+  {
+    id: "PJM-20261011-001",
+    unitName: "Unit MTs Tahfidz",
+    borrowerName: "Ustadz Hidayat",
+    borrowerPhone: "081234567891",
+    items: [
+      { itemId: "ALAT-001", itemName: "Mirrorless", category: "Kamera" },
+      { itemId: "ALAT-011", itemName: "Tripod Kamera (2 Unit)", category: "Stabilizer & Tripod" }
+    ],
+    startDate: "2026-10-11",
+    startTime: "08:00",
+    endDate: "2026-10-12",
+    endTime: "17:00",
+    purpose: "Dokumentasi kegiatan LDKS santri MTs",
+    status: "Selesai",
+    pickupLocation: "Kantor Media",
+    createdAt: "2026-10-10",
+    approvedAt: "2026-10-10",
+    returnedAt: "2026-10-12",
+    approvedBy: "Admin Media",
+    returnNotes: "Alat dikembalikan lengkap dan kondisi bersih."
+  },
+  {
+    id: "PJM-20261024-002",
+    unitName: "Kesantrian Putra",
+    borrowerName: "Ust. Abdullah",
+    borrowerPhone: "081345678912",
+    items: [
+      { itemId: "ALAT-013", itemName: "Lighting (3 Unit)", category: "Lighting" },
+      { itemId: "ALAT-014", itemName: "Mic Wireless (1 Unit)", category: "Audio & Mic" }
+    ],
+    startDate: "2026-10-24",
+    startTime: "19:00",
+    endDate: "2026-10-25",
+    endTime: "22:00",
+    purpose: "Malam keakraban & pentas santri",
+    status: "Selesai",
+    pickupLocation: "Kantor Media",
+    createdAt: "2026-10-23",
+    approvedAt: "2026-10-23",
+    returnedAt: "2026-10-25",
+    approvedBy: "Admin Media",
+    returnNotes: "Kondisi baik."
+  },
+  {
+    id: "PJM-20261101-001",
+    unitName: "Panitia Wisuda Tahfidz",
+    borrowerName: "Ust. Rahman",
+    borrowerPhone: "081298765432",
+    items: [
+      { itemId: "ALAT-001", itemName: "Mirrorless", category: "Kamera" },
+      { itemId: "ALAT-010", itemName: "Camcorder (1 Unit)", category: "Kamera" },
+      { itemId: "ALAT-015", itemName: "Kabel HDMI 20 M (4 Pcs)", category: "Aksesoris & Kabel" },
+      { itemId: "ALAT-018", itemName: "Soundcard (1 Unit)", category: "Audio & Mic" }
+    ],
+    startDate: "2026-11-01",
+    startTime: "07:00",
+    endDate: "2026-11-03",
+    endTime: "15:00",
+    purpose: "Live Streaming & Dokumentasi Wisuda Tahfidz 30 Juz",
+    status: "Selesai",
+    pickupLocation: "Kantor Media",
+    createdAt: "2026-10-31",
+    approvedAt: "2026-10-31",
+    returnedAt: "2026-11-03",
+    approvedBy: "Admin Media",
+    returnNotes: "Semua kabel dan perangkat kembali lengkap."
+  },
+  {
+    id: "PJM-20261114-002",
+    unitName: "Biro Humas & Dakwah",
+    borrowerName: "Ust. Zulkifli",
+    borrowerPhone: "081567890123",
+    items: [
+      { itemId: "ALAT-014", itemName: "Mic Wireless (1 Unit)", category: "Audio & Mic" },
+      { itemId: "ALAT-007", itemName: "Drone DJI Mini 3 Pro", category: "Drone & Stream" }
+    ],
+    startDate: "2026-11-14",
+    startTime: "08:00",
+    endDate: "2026-11-16",
+    endTime: "16:00",
+    purpose: "Liputan Safari Dakwah & Kunjungan Tokoh ke Pesantren",
+    status: "Disetujui",
+    pickupLocation: "Kantor Media",
+    createdAt: "2026-11-13",
+    approvedAt: "2026-11-13",
+    approvedBy: "Admin Media"
+  }
+];
 
-// Dikosongkan sesuai instruksi user
-export const initialEvents: MediaEvent[] = [];
+export const initialEvents: MediaEvent[] = [
+  {
+    id: "EVT-20261005-01",
+    title: "Kajian Akbar Awal Bulan: Menjaga Kemurnian Hafalan Al-Qur'an",
+    category: "Kajian / Tabligh",
+    startDate: "2026-10-05",
+    startTime: "08:00",
+    endDate: "2026-10-05",
+    endTime: "11:30",
+    location: "Masjid Jami' PPTQ Qoryatul Qur'an",
+    crewAssigned: ["Ahmad (Kamera)", "Fauzan (Audio)", "Ihsan (Streaming)"],
+    requiredGear: ["Mirrorless", "Tripod Kamera", "Mic Wireless", "Laptop"],
+    description: "Kajian rutin bulanan dihadiri seluruh santri dan wali santri."
+  },
+  {
+    id: "EVT-20261012-01",
+    title: "Live Streaming Shalat Jumat & Khutbah",
+    category: "Live Streaming",
+    startDate: "2026-10-12",
+    startTime: "11:15",
+    endDate: "2026-10-12",
+    endTime: "12:45",
+    location: "Masjid Utama Pesantren",
+    crewAssigned: ["Rizky (Operator)", "Zaid (Kamera)"],
+    requiredGear: ["Camcorder", "Tripod Kamera", "Kabel HDMI 20 M"],
+    description: "Siaran langsung khutbah Jumat di kanal resmi Qoryah TV."
+  },
+  {
+    id: "EVT-20261018-01",
+    title: "Liputan Tasmi' Akbar Santri 10 Juz Sekali Duduk",
+    category: "Liputan Santri",
+    startDate: "2026-10-18",
+    startTime: "05:30",
+    endDate: "2026-10-18",
+    endTime: "12:00",
+    location: "Aula Tahfidz Putra",
+    crewAssigned: ["Ihsan (Dokumentasi)", "Umar (Fotografer)"],
+    requiredGear: ["Mirrorless", "Lensa", "Tas Kamera", "MMC (3 Pcs)"],
+    description: "Dokumentasi ujian hafalan santri berprestasi 10 juz bil ghaib."
+  },
+  {
+    id: "EVT-20261025-01",
+    title: "Produksi Video Profil Pondok Pesantren PPTQ Qoryatul Qur'an",
+    category: "Produksi Konten",
+    startDate: "2026-10-25",
+    startTime: "09:00",
+    endDate: "2026-10-25",
+    endTime: "16:00",
+    location: "Komplek Pesantren & Studio Qoryah TV",
+    crewAssigned: ["Tim Kreatif Qoryah TV", "Fauzan", "Ahmad"],
+    requiredGear: ["Drone DJI Mini 3 Pro", "Stabilizer Kamera", "Lighting (3 Unit)"],
+    description: "Pengambilan footage udara dan aktivitas santri harian."
+  },
+  {
+    id: "EVT-20261030-01",
+    title: "Rapat Kerja & Evaluasi Tim Media Qoryah TV",
+    category: "Internal Pesantren",
+    startDate: "2026-10-30",
+    startTime: "19:30",
+    endDate: "2026-10-30",
+    endTime: "21:30",
+    location: "Kantor Media",
+    crewAssigned: ["Seluruh Kru Media & Pengasuh"],
+    requiredGear: ["Laptop", "Monitor"],
+    description: "Evaluasi penayangan konten YouTube dan inventarisasi peralatan media."
+  },
+  {
+    id: "EVT-20261102-01",
+    title: "Wisuda Tahfidz & Khotmil Qur'an Santri Angkatan Ke-IV",
+    category: "Live Streaming",
+    startDate: "2026-11-02",
+    startTime: "07:30",
+    endDate: "2026-11-02",
+    endTime: "13:00",
+    location: "Gedung Serbaguna PPTQ Qoryatul Qur'an",
+    crewAssigned: ["Ihsan (Director)", "Ahmad (Cam 1)", "Zaid (Cam 2)", "Fauzan (Audio)"],
+    requiredGear: ["Mirrorless", "Camcorder", "Lighting (3 Unit)", "Mic Wireless", "Soundcard", "Kabel HDMI 20 M"],
+    description: "Live streaming dan liputan penuh prosesi wisuda tahfidz 30 juz."
+  },
+  {
+    id: "EVT-20261108-01",
+    title: "Liputan Ekstrakurikuler Memanah & Berkuda Santri",
+    category: "Liputan Santri",
+    startDate: "2026-11-08",
+    startTime: "07:00",
+    endDate: "2026-11-08",
+    endTime: "10:30",
+    location: "Lapangan Utama Pesantren",
+    crewAssigned: ["Rizky (Drone Pilot)", "Umar (Kamera)"],
+    requiredGear: ["Drone DJI Mini 3 Pro", "Mirrorless", "Lensa"],
+    description: "Dokumentasi visual kegiatan olahraga sunnah santri akhir pekan."
+  },
+  {
+    id: "EVT-20261115-01",
+    title: "Kajian Spesial Parenting Qur'ani Bersama Wali Santri",
+    category: "Kajian / Tabligh",
+    startDate: "2026-11-15",
+    startTime: "08:30",
+    endDate: "2026-11-15",
+    endTime: "11:45",
+    location: "Masjid Jami' PPTQ Qoryatul Qur'an",
+    crewAssigned: ["Fauzan (Audio)", "Ahmad (Streaming)"],
+    requiredGear: ["Mic Wireless", "Soundcard", "Tripod Kamera", "Laptop"],
+    description: "Siaran langsung kajian pembinaan wali santri secara daring dan luring."
+  },
+  {
+    id: "EVT-20261120-01",
+    title: "Podcast Qoryah TV: Rahasia Istiqamah Menghafal 30 Juz",
+    category: "Produksi Konten",
+    startDate: "2026-11-20",
+    startTime: "13:30",
+    endDate: "2026-11-20",
+    endTime: "15:30",
+    location: "Studio Podcast Qoryah TV",
+    crewAssigned: ["Ihsan (Host)", "Ahmad (Switching)"],
+    requiredGear: ["Lighting (3 Unit)", "Soundcard", "Mic Wireless", "Mirrorless"],
+    description: "Rekaman wawancara santri teladan untuk edukasi publik."
+  },
+  {
+    id: "EVT-20261128-01",
+    title: "Dokumentasi Ujian Tasmi' Akhir Semester Tahfidz",
+    category: "Liputan Santri",
+    startDate: "2026-11-28",
+    startTime: "08:00",
+    endDate: "2026-11-28",
+    endTime: "14:00",
+    location: "Madrasah Tahfidz PPTQ",
+    crewAssigned: ["Tim Dokumentasi Santri"],
+    requiredGear: ["Mirrorless", "Tas Kamera", "MMC (3 Pcs)"],
+    description: "Liputan komprehensif ujian semester hafalan Al-Qur'an seluruh jenjang."
+  }
+];
+

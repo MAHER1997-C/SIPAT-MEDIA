@@ -1,7 +1,7 @@
 import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
 import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData';
 
-const CURRENT_VERSION = 'v8_pptq_qoryatul_quran_admin_phone';
+const CURRENT_VERSION = 'v9_pptq_2month_events_print_fix';
 const VERSION_KEY = 'sipat_media_version_sync';
 
 const STORAGE_KEYS = {

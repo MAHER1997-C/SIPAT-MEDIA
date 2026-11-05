@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MediaItem, LoanRequest, MediaEvent, AppSettings } from './types';
 import { 
   getStoredItems, saveStoredItems, 
@@ -8,6 +8,12 @@ import {
   getAdminSession, setAdminSession,
   decodeSettingsFromCode
 } from './utils/storage';
+import {
+  fetchCloudItems, saveCloudItem, deleteCloudItem,
+  fetchCloudLoans, createCloudLoan, updateCloudLoan,
+  fetchCloudEvents, createCloudEvent,
+  fetchCloudSettings, saveCloudSettings
+} from './services/api';
 import { Navbar } from './components/Navbar';
 import { DashboardHomeView } from './components/DashboardHomeView';
 import { InventoryView } from './components/InventoryView';
@@ -52,14 +58,71 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Load stored data on mount & check for URL sync
-  useEffect(() => {
-    setItems(getStoredItems());
-    setLoans(getStoredLoans());
-    setEvents(getStoredEvents());
-    setIsAdmin(getAdminSession());
+  // Centralized sync loader: loads from Cloud SQL PostgreSQL, falls back to local cache
+  const loadCloudData = useCallback(async (isBackground = false) => {
+    try {
+      const [cloudItems, cloudLoans, cloudEvents, cloudSettings] = await Promise.all([
+        fetchCloudItems().catch(() => null),
+        fetchCloudLoans().catch(() => null),
+        fetchCloudEvents().catch(() => null),
+        fetchCloudSettings().catch(() => null),
+      ]);
 
-    // Cek jika URL membawa parameter sinkronisasi pengaturan (?sync_settings=...)
+      if (cloudItems && cloudItems.length > 0) {
+        setItems(cloudItems);
+        saveStoredItems(cloudItems);
+      } else if (!isBackground) {
+        setItems(getStoredItems());
+      }
+
+      if (cloudLoans) {
+        setLoans(cloudLoans);
+        saveStoredLoans(cloudLoans);
+      } else if (!isBackground) {
+        setLoans(getStoredLoans());
+      }
+
+      if (cloudEvents) {
+        setEvents(cloudEvents);
+        saveStoredEvents(cloudEvents);
+      } else if (!isBackground) {
+        setEvents(getStoredEvents());
+      }
+
+      if (cloudSettings) {
+        setSettings(cloudSettings);
+        saveStoredSettings(cloudSettings);
+      } else if (!isBackground) {
+        setSettings(getStoredSettings());
+      }
+    } catch (e) {
+      if (!isBackground) {
+        setItems(getStoredItems());
+        setLoans(getStoredLoans());
+        setEvents(getStoredEvents());
+        setSettings(getStoredSettings());
+      }
+    }
+  }, []);
+
+  // Load stored data on mount & start auto-sync polling
+  useEffect(() => {
+    setIsAdmin(getAdminSession());
+    loadCloudData(false);
+
+    // Auto-sync polling every 6 seconds so updates on one phone reflect across all devices
+    const interval = setInterval(() => {
+      loadCloudData(true);
+    }, 6000);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadCloudData(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    // Check for sync_settings URL param
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const syncCode = urlParams.get('sync_settings');
@@ -68,19 +131,22 @@ export default function App() {
         if (decoded) {
           saveStoredSettings(decoded);
           setSettings(decoded);
+          saveCloudSettings(decoded).catch(() => {});
           showToast(`Sinkronisasi berhasil! Data pesantren: "${decoded.pesantrenName}" telah diterapkan.`);
           window.history.replaceState({}, document.title, window.location.pathname);
-          return;
         }
       }
     } catch (e) {
       console.error('Error auto-syncing settings from URL', e);
     }
 
-    setSettings(getStoredSettings());
-  }, []);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [loadCloudData]);
 
-  // Save changes to storage
+  // Local & Cloud Update Handlers
   const handleUpdateItems = (updated: MediaItem[]) => {
     setItems(updated);
     saveStoredItems(updated);
@@ -96,18 +162,20 @@ export default function App() {
     saveStoredEvents(updated);
   };
 
-  const handleSaveSettings = (newSettings: AppSettings) => {
+  const handleSaveSettings = async (newSettings: AppSettings) => {
     setSettings(newSettings);
     saveStoredSettings(newSettings);
     showToast('Pengaturan lembaga berhasil diperbarui.');
+    try {
+      await saveCloudSettings(newSettings);
+    } catch (e) {
+      console.error('Failed to sync settings to Cloud SQL:', e);
+    }
   };
 
   const handleDataReset = () => {
-    setItems(getStoredItems());
-    setLoans(getStoredLoans());
-    setEvents(getStoredEvents());
-    setSettings(getStoredSettings());
-    showToast('Data sistem telah dimuat ulang.');
+    loadCloudData(false);
+    showToast('Data sistem telah dimuat ulang dari database cloud.');
   };
 
   // Admin Auth Handlers
@@ -123,9 +191,10 @@ export default function App() {
     showToast('Telah keluar dari mode Admin.');
   };
 
-  // Item Management (Admin)
-  const handleSaveItem = (itemToSave: MediaItem) => {
+  // Item Management (Admin) with Cloud SQL Sync
+  const handleSaveItem = async (itemToSave: MediaItem) => {
     const existingIndex = items.findIndex((i) => i.id === itemToSave.id);
+    const isNew = existingIndex < 0;
     let newItems: MediaItem[];
     if (existingIndex >= 0) {
       newItems = [...items];
@@ -136,19 +205,31 @@ export default function App() {
       showToast(`Alat baru ${itemToSave.name} berhasil ditambahkan.`);
     }
     handleUpdateItems(newItems);
+
+    try {
+      await saveCloudItem(itemToSave, isNew);
+    } catch (e) {
+      console.error('Failed to sync item to Cloud SQL:', e);
+    }
   };
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = async (id: string) => {
     const item = items.find((i) => i.id === id);
     if (window.confirm(`Yakin ingin menghapus alat "${item?.name || id}" dari inventaris?`)) {
       const newItems = items.filter((i) => i.id !== id);
       handleUpdateItems(newItems);
       showToast('Alat telah dihapus dari inventaris.');
+
+      try {
+        await deleteCloudItem(id);
+      } catch (e) {
+        console.error('Failed to delete item from Cloud SQL:', e);
+      }
     }
   };
 
-  // Event Management (Admin)
-  const handleSaveEvent = (eventToSave: MediaEvent) => {
+  // Event Management (Admin) with Cloud SQL Sync
+  const handleSaveEvent = async (eventToSave: MediaEvent) => {
     const existingIndex = events.findIndex((e) => e.id === eventToSave.id);
     let newEvents: MediaEvent[];
     if (existingIndex >= 0) {
@@ -160,6 +241,12 @@ export default function App() {
       showToast(`Jadwal liputan "${eventToSave.title}" berhasil ditambahkan.`);
     }
     handleUpdateEvents(newEvents);
+
+    try {
+      await createCloudEvent(eventToSave);
+    } catch (e) {
+      console.error('Failed to sync event to Cloud SQL:', e);
+    }
   };
 
   const handleDeleteEvent = (id: string) => {
@@ -171,19 +258,26 @@ export default function App() {
     }
   };
 
-  // Loan Request Submissions (Unit)
-  const handleSubmitLoan = (newLoan: LoanRequest) => {
+  // Loan Request Submissions (Unit) with Cloud SQL Sync
+  const handleSubmitLoan = async (newLoan: LoanRequest) => {
     const newLoans = [newLoan, ...loans];
     handleUpdateLoans(newLoans);
     showToast(`Pengajuan ${newLoan.id} dari ${newLoan.unitName} berhasil dibuat.`);
+
+    try {
+      await createCloudLoan(newLoan);
+    } catch (e) {
+      console.error('Failed to sync loan to Cloud SQL:', e);
+    }
   };
 
-  // Loan Approval by Admin
-  const handleApproveLoan = (loanId: string, adminName: string, pickupLocation?: string) => {
+  // Loan Approval by Admin with Cloud SQL Sync
+  const handleApproveLoan = async (loanId: string, adminName: string, pickupLocation?: string) => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return;
 
     const finalPickupLocation = (pickupLocation && pickupLocation.trim()) || settings.defaultPickupLocation || 'Kantor Media';
+    const approvedAt = new Date().toISOString();
 
     // Update loan status
     const updatedLoans = loans.map((l) => {
@@ -191,7 +285,7 @@ export default function App() {
         return {
           ...l,
           status: 'Disetujui' as const,
-          approvedAt: new Date().toISOString(),
+          approvedAt,
           approvedBy: adminName,
           pickupLocation: finalPickupLocation,
         };
@@ -218,14 +312,29 @@ export default function App() {
       return item;
     });
     handleUpdateItems(updatedItems);
-
     showToast(`Peminjaman ${loanId} disetujui. Pengambilan di: ${finalPickupLocation}`);
+
+    try {
+      await updateCloudLoan(loanId, {
+        status: 'Disetujui',
+        approvedAt,
+        approvedBy: adminName,
+        pickupLocation: finalPickupLocation,
+      });
+      for (const it of updatedItems.filter((i) => itemIds.has(i.id))) {
+        await saveCloudItem(it, false);
+      }
+    } catch (e) {
+      console.error('Failed to sync loan approval to Cloud SQL:', e);
+    }
   };
 
-  // Loan Return by Admin
-  const handleReturnLoan = (loanId: string, returnNotes: string) => {
+  // Loan Return by Admin with Cloud SQL Sync
+  const handleReturnLoan = async (loanId: string, returnNotes: string) => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return;
+
+    const returnedAt = new Date().toISOString();
 
     // Update loan status
     const updatedLoans = loans.map((l) => {
@@ -233,7 +342,7 @@ export default function App() {
         return {
           ...l,
           status: 'Selesai' as const,
-          returnedAt: new Date().toISOString(),
+          returnedAt,
           returnNotes,
         };
       }
@@ -254,12 +363,24 @@ export default function App() {
       return item;
     });
     handleUpdateItems(updatedItems);
-
     showToast(`Alat peminjaman ${loanId} telah dikembalikan ke inventaris.`);
+
+    try {
+      await updateCloudLoan(loanId, {
+        status: 'Selesai',
+        returnedAt,
+        returnNotes,
+      });
+      for (const it of updatedItems.filter((i) => itemIds.has(i.id))) {
+        await saveCloudItem(it, false);
+      }
+    } catch (e) {
+      console.error('Failed to sync loan return to Cloud SQL:', e);
+    }
   };
 
-  // Loan Rejection by Admin
-  const handleRejectLoan = (loanId: string, reason: string) => {
+  // Loan Rejection by Admin with Cloud SQL Sync
+  const handleRejectLoan = async (loanId: string, reason: string) => {
     const updatedLoans = loans.map((l) => {
       if (l.id === loanId) {
         return {
@@ -272,6 +393,15 @@ export default function App() {
     });
     handleUpdateLoans(updatedLoans);
     showToast(`Peminjaman ${loanId} telah ditolak.`);
+
+    try {
+      await updateCloudLoan(loanId, {
+        status: 'Ditolak',
+        rejectionReason: reason,
+      });
+    } catch (e) {
+      console.error('Failed to sync loan rejection to Cloud SQL:', e);
+    }
   };
 
   // Quick borrow from inventory card
@@ -283,30 +413,32 @@ export default function App() {
   const pendingLoansCount = loans.filter((l) => l.status === 'Menunggu Konfirmasi').length;
 
   return (
-    <div className="min-h-screen bg-[#F7FAF8] flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-[#F7FAF8] print:bg-white flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl text-xs font-bold animate-in slide-in-from-bottom-3 duration-200 flex items-center gap-2.5">
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-xl text-xs font-bold animate-in slide-in-from-bottom-3 duration-200 flex items-center gap-2.5 print:hidden">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       <div>
-        {/* Navigation Bar */}
-        <Navbar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          isAdmin={isAdmin}
-          onOpenAdminModal={() => setIsAdminModalOpen(true)}
-          onAdminLogout={handleAdminLogout}
-          onOpenSettings={() => setIsSettingsModalOpen(true)}
-          pendingLoansCount={pendingLoansCount}
-          settings={settings}
-        />
+        {/* Navigation Bar - Hidden on print */}
+        <div className="print:hidden">
+          <Navbar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            isAdmin={isAdmin}
+            onOpenAdminModal={() => setIsAdminModalOpen(true)}
+            onAdminLogout={handleAdminLogout}
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            pendingLoansCount={pendingLoansCount}
+            settings={settings}
+          />
+        </div>
 
         {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 print:p-0 print:m-0 print:max-w-none">
           {activeTab === 'dashboard' && (
             <DashboardHomeView
               items={items}
@@ -388,8 +520,8 @@ export default function App() {
         </main>
       </div>
 
-      {/* Footer (Clean, bright, modern, friendly) */}
-      <footer className="mt-12 bg-white text-slate-500 py-6 shadow-2xs">
+      {/* Footer (Hidden on print) */}
+      <footer className="mt-12 bg-white text-slate-500 py-6 shadow-2xs print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-extrabold text-emerald-700">{settings.appTitle || 'SIPAT Media'}</span>

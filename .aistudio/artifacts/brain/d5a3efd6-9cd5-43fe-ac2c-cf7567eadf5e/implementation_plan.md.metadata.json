@@ -1,6 +1,6 @@
 {
-  "summary":  "Rencana revisi yang disesuaikan dengan alur deployment GitHub dan Vercel Anda: menanamkan data identitas lembaga (nama pesantren, logo, lokasi) langsung ke file kode sumber sehingga otomatis ter-deploy ke Vercel untuk semua perangkat, serta opsi opsional database cloud bila memerlukan sinkronisasi transaksi peminjaman real-time.",
-  "updatedAt":  "2026-11-02T14:29:40.073766057Z",
-  "requestFeedback":  true,
-  "userFacing":  true
+  "summary": "Rencana arsitektur dan implementasi integrasi database cloud PostgreSQL (Cloud SQL) dengan Drizzle ORM dan Express server untuk menyinkronkan data inventaris 27 alat, peminjaman, kegiatan, dan pengaturan PPTQ Qoryatul Qur'an di seluruh perangkat (HP & laptop) secara real-time. Termasuk migrasi otomatis data bawaan dan fallback cerdas.",
+  "updatedAt": "2026-11-05T10:22:18.604973870Z",
+  "requestFeedback": true,
+  "userFacing": true
 }
