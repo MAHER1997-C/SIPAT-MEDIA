@@ -455,7 +455,7 @@ export const LoanFormView: React.FC<LoanFormViewProps> = ({
           <div className="flex items-center justify-between">
             <div className="text-xs">
               <span className="text-emerald-100 block text-[10px]">Tujuan Permohonan:</span>
-              <span className="font-bold text-white">WA Admin ({settings.mediaLeaderPhone || '081234567890'})</span>
+              <span className="font-bold text-white">WA Admin ({settings.mediaLeaderPhone || '081515509831'})</span>
             </div>
             <button
               type="button"

@@ -477,7 +477,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Contoh: 081234567890"
+                  placeholder="Contoh: 081515509831"
                   value={formData.mediaLeaderPhone}
                   onChange={(e) => setFormData({ ...formData, mediaLeaderPhone: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs font-mono font-bold rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-900 shadow-2xs"

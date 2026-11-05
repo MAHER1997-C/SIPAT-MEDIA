@@ -9,7 +9,7 @@ export const initialSettings: AppSettings = {
   logoPreset: "tv",
   logoCustomUrl: "",
   whatsappGroupLink: "https://chat.whatsapp.com/sample-group-link",
-  mediaLeaderPhone: "6281234567890",
+  mediaLeaderPhone: "081515509831",
   adminPin: "1234",
 };
 

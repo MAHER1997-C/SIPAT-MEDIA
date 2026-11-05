@@ -1,7 +1,7 @@
 import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
 import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData';
 
-const CURRENT_VERSION = 'v7_pptq_qoryatul_quran_official';
+const CURRENT_VERSION = 'v8_pptq_qoryatul_quran_admin_phone';
 const VERSION_KEY = 'sipat_media_version_sync';
 
 const STORAGE_KEYS = {
@@ -121,6 +121,9 @@ export function getStoredSettings(): AppSettings {
     const defaultPickupLocation = (!parsed.defaultPickupLocation || parsed.defaultPickupLocation.includes('Studio Biro Media'))
       ? initialSettings.defaultPickupLocation
       : parsed.defaultPickupLocation;
+    const mediaLeaderPhone = (!parsed.mediaLeaderPhone || parsed.mediaLeaderPhone === '6281234567890' || parsed.mediaLeaderPhone === '081234567890')
+      ? initialSettings.mediaLeaderPhone
+      : parsed.mediaLeaderPhone;
 
     return {
       ...initialSettings,
@@ -128,6 +131,7 @@ export function getStoredSettings(): AppSettings {
       pesantrenName,
       mediaTeamName,
       defaultPickupLocation,
+      mediaLeaderPhone,
       appTitle: parsed.appTitle || initialSettings.appTitle,
       logoType: parsed.logoType || initialSettings.logoType,
       logoPreset: parsed.logoPreset || initialSettings.logoPreset,
