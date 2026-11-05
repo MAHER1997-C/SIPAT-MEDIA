@@ -6,13 +6,16 @@ import {
   getStoredEvents, saveStoredEvents, 
   getStoredSettings, saveStoredSettings, 
   getAdminSession, setAdminSession,
-  decodeSettingsFromCode
+  decodeSettingsFromCode,
+  decodeFullSyncBundle,
+  applyWhatsAppSyncDelta
 } from './utils/storage';
 import {
   fetchCloudItems, saveCloudItem, deleteCloudItem,
   fetchCloudLoans, createCloudLoan, updateCloudLoan,
   fetchCloudEvents, createCloudEvent,
-  fetchCloudSettings, saveCloudSettings
+  fetchCloudSettings, saveCloudSettings,
+  sendFullSyncBundle
 } from './services/api';
 import { Navbar } from './components/Navbar';
 import { DashboardHomeView } from './components/DashboardHomeView';
@@ -25,6 +28,7 @@ import { AdminAuthModal } from './components/AdminAuthModal';
 import { ItemModal } from './components/ItemModal';
 import { EventModal } from './components/EventModal';
 import { SettingsModal } from './components/SettingsModal';
+import { VercelSyncModal } from './components/VercelSyncModal';
 
 export default function App() {
   // Application Data States
@@ -49,6 +53,7 @@ export default function App() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<MediaEvent | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   // Toast / notification feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -122,12 +127,61 @@ export default function App() {
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
 
-    // Check for sync_settings URL param
+    // Check for sync_wa (WhatsApp Delta Sync), sync_bundle, or sync_settings URL param
     try {
       const urlParams = new URLSearchParams(window.location.search);
-      const syncCode = urlParams.get('sync_settings');
-      if (syncCode) {
-        const decoded = decodeSettingsFromCode(syncCode);
+      const syncWaCode = urlParams.get('sync_wa');
+      const syncBundleCode = urlParams.get('sync_bundle');
+      const syncSettingsCode = urlParams.get('sync_settings');
+
+      if (syncWaCode) {
+        const curItems = getStoredItems();
+        const curLoans = getStoredLoans();
+        const curSettings = getStoredSettings();
+        const res = applyWhatsAppSyncDelta(syncWaCode, curItems, curLoans, curSettings);
+        if (res) {
+          setItems(res.newItems);
+          setLoans(res.newLoans);
+          setSettings(res.newSettings);
+          sendFullSyncBundle({
+            settings: res.newSettings,
+            items: res.newItems,
+            loans: res.newLoans,
+          }).catch(() => {});
+          const activeBorrowed = res.newLoans.filter((l) => l.status === 'Disetujui').length;
+          showToast(`Data Web Terupdate dari WhatsApp! (${res.newItems.length} Alat • ${activeBorrowed} Dipinjam).`);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } else if (syncBundleCode) {
+        const decoded = decodeFullSyncBundle(syncBundleCode);
+        if (decoded) {
+          if (decoded.items && Array.isArray(decoded.items)) {
+            setItems(decoded.items);
+            saveStoredItems(decoded.items);
+          }
+          if (decoded.loans && Array.isArray(decoded.loans)) {
+            setLoans(decoded.loans);
+            saveStoredLoans(decoded.loans);
+          }
+          if (decoded.events && Array.isArray(decoded.events)) {
+            setEvents(decoded.events);
+            saveStoredEvents(decoded.events);
+          }
+          if (decoded.settings && typeof decoded.settings === 'object') {
+            setSettings(decoded.settings);
+            saveStoredSettings(decoded.settings);
+          }
+          sendFullSyncBundle({
+            settings: decoded.settings,
+            items: decoded.items,
+            loans: decoded.loans,
+            events: decoded.events,
+          }).catch(() => {});
+          showToast(`Sinkronisasi Berhasil! Data inventaris ${decoded.settings?.pesantrenName || "PPTQ Qoryatul Qur'an"} telah diselaraskan.`);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } else if (syncSettingsCode) {
+        const decoded = decodeSettingsFromCode(syncSettingsCode);
         if (decoded) {
           saveStoredSettings(decoded);
           setSettings(decoded);
@@ -137,7 +191,7 @@ export default function App() {
         }
       }
     } catch (e) {
-      console.error('Error auto-syncing settings from URL', e);
+      console.error('Error auto-syncing data from URL', e);
     }
 
     return () => {
@@ -432,6 +486,7 @@ export default function App() {
             onOpenAdminModal={() => setIsAdminModalOpen(true)}
             onAdminLogout={handleAdminLogout}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
+            onOpenSyncModal={() => setIsSyncModalOpen(true)}
             pendingLoansCount={pendingLoansCount}
             settings={settings}
           />
@@ -568,6 +623,19 @@ export default function App() {
         settings={settings}
         onSaveSettings={handleSaveSettings}
         onDataReset={handleDataReset}
+        onOpenSyncModal={() => setIsSyncModalOpen(true)}
+      />
+
+      {/* Vercel & Cloud SQL Bidirectional Sync Modal */}
+      <VercelSyncModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        settings={settings}
+        items={items}
+        loans={loans}
+        events={events}
+        onDataSynced={() => loadCloudData(false)}
+        showToast={showToast}
       />
     </div>
   );

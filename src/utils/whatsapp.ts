@@ -74,6 +74,7 @@ _Jazakumullahu Khairan Katsiran._
 Wassalamu'alaikum Warahmatullahi Wabarakatuh.
 
 ---
+🔗 *Tautan Web SIPAT Media*: https://sipatmedia.vercel.app
 _Dikirim via ${settings.appTitle || 'SIPAT Media'}_`;
 }
 
@@ -110,6 +111,9 @@ ${itemList}
 
 _Catatan:_
 _Mohon periksa fisik, kelengkapan baterai, kabel, dan tas sebelum meninggalkan tempat pengambilan._
+
+---
+🔗 *Pantau status peminjaman*: https://sipatmedia.vercel.app
 Terima kasih. Wassalamu'alaikum Wr. Wb.`;
 }
 

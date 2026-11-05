@@ -49,6 +49,7 @@ export function getStoredItems(): MediaItem[] {
 
 export function saveStoredItems(items: MediaItem[]): void {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
     localStorage.setItem(STORAGE_KEYS.ITEMS, JSON.stringify(items));
   } catch (e) {
     console.error('Error saving items to storage', e);
@@ -57,6 +58,7 @@ export function saveStoredItems(items: MediaItem[]): void {
 
 export function getStoredLoans(): LoanRequest[] {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return initialLoans;
     const raw = localStorage.getItem(STORAGE_KEYS.LOANS);
     if (!raw) {
       localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(initialLoans));
@@ -71,6 +73,7 @@ export function getStoredLoans(): LoanRequest[] {
 
 export function saveStoredLoans(loans: LoanRequest[]): void {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
     localStorage.setItem(STORAGE_KEYS.LOANS, JSON.stringify(loans));
   } catch (e) {
     console.error('Error saving loans to storage', e);
@@ -79,6 +82,7 @@ export function saveStoredLoans(loans: LoanRequest[]): void {
 
 export function getStoredEvents(): MediaEvent[] {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return initialEvents;
     const raw = localStorage.getItem(STORAGE_KEYS.EVENTS);
     if (!raw) {
       localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(initialEvents));
@@ -98,6 +102,7 @@ export function getStoredEvents(): MediaEvent[] {
 
 export function saveStoredEvents(events: MediaEvent[]): void {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
     localStorage.setItem(STORAGE_KEYS.EVENTS, JSON.stringify(events));
   } catch (e) {
     console.error('Error saving events to storage', e);
@@ -106,6 +111,7 @@ export function saveStoredEvents(events: MediaEvent[]): void {
 
 export function getStoredSettings(): AppSettings {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return initialSettings;
     const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (!raw) {
       localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(initialSettings));
@@ -144,6 +150,7 @@ export function getStoredSettings(): AppSettings {
 
 export function saveStoredSettings(settings: AppSettings): void {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   } catch (e) {
     console.error('Error saving settings to storage', e);
@@ -284,4 +291,191 @@ export function importSettingsJson(jsonStr: string): AppSettings | null {
     return null;
   }
 }
+
+export interface StoredSyncBundle {
+  timestamp: string;
+  source: string;
+  version: string;
+  settings: AppSettings;
+  items: MediaItem[];
+  loans: LoanRequest[];
+  events: MediaEvent[];
+}
+
+export function getFullSyncBundleData(): StoredSyncBundle {
+  return {
+    timestamp: new Date().toISOString(),
+    source: "SIPAT Media - PPTQ Qoryatul Qur'an",
+    version: CURRENT_VERSION,
+    settings: getStoredSettings(),
+    items: getStoredItems(),
+    loans: getStoredLoans(),
+    events: getStoredEvents(),
+  };
+}
+
+export function encodeFullSyncBundle(bundle: StoredSyncBundle): string {
+  try {
+    const jsonStr = JSON.stringify(bundle);
+    return btoa(
+      encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+        String.fromCharCode(parseInt(p1, 16))
+      )
+    );
+  } catch (e) {
+    console.error('Error encoding full sync bundle', e);
+    return '';
+  }
+}
+
+export function decodeFullSyncBundle(code: string): StoredSyncBundle | null {
+  try {
+    const clean = code.trim();
+    if (!clean) return null;
+    const jsonStr = decodeURIComponent(
+      Array.prototype.map
+        .call(atob(clean), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const parsed = JSON.parse(jsonStr);
+    if (parsed && typeof parsed === 'object' && (parsed.items || parsed.settings)) {
+      return parsed as StoredSyncBundle;
+    }
+    return null;
+  } catch (e) {
+    console.error('Error decoding full sync bundle', e);
+    return null;
+  }
+}
+
+/**
+ * Paket Sinkronisasi Ringkas Khusus WhatsApp (Delta Sync)
+ * Mengompresi perbedaan alat yang baru ditambahkan/diubah, permohonan pinjam aktif, dan pengaturan
+ * sehingga tautan tetap ringkas di bawah batas karakter WhatsApp & peramban Android
+ */
+export interface WhatsAppSyncDelta {
+  t: number; // timestamp
+  i?: MediaItem[]; // newly added or modified items
+  l?: LoanRequest[]; // active or recent loans
+  s?: Partial<AppSettings>; // settings
+}
+
+export function generateWhatsAppSyncDelta(
+  currentItems: MediaItem[],
+  currentLoans: LoanRequest[],
+  currentSettings: AppSettings
+): string {
+  try {
+    // Cari alat yang ditambahkan baru (misal ALAT-028) atau diubah kondisinya
+    const modifiedItems = currentItems.filter((item) => {
+      const orig = initialItems.find((o) => o.id === item.id);
+      if (!orig) return true; // item baru!
+      return (
+        orig.status !== item.status ||
+        orig.condition !== item.condition ||
+        orig.name !== item.name ||
+        orig.notes !== item.notes
+      );
+    });
+
+    const delta: WhatsAppSyncDelta = {
+      t: Date.now(),
+      i: modifiedItems.length > 0 ? modifiedItems : undefined,
+      l: currentLoans.length > 0 ? currentLoans : undefined,
+      s: {
+        pesantrenName: currentSettings.pesantrenName,
+        mediaTeamName: currentSettings.mediaTeamName,
+        mediaLeaderPhone: currentSettings.mediaLeaderPhone,
+        defaultPickupLocation: currentSettings.defaultPickupLocation,
+      },
+    };
+
+    const jsonStr = JSON.stringify(delta);
+    return btoa(
+      encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) =>
+        String.fromCharCode(parseInt(p1, 16))
+      )
+    );
+  } catch (e) {
+    console.error('Error generating WhatsApp sync delta', e);
+    return '';
+  }
+}
+
+export function applyWhatsAppSyncDelta(
+  code: string,
+  existingItems: MediaItem[],
+  existingLoans: LoanRequest[],
+  existingSettings: AppSettings
+): {
+  newItems: MediaItem[];
+  newLoans: LoanRequest[];
+  newSettings: AppSettings;
+  itemCountAdded: number;
+  loanCountUpdated: number;
+} | null {
+  try {
+    const clean = code.trim();
+    if (!clean) return null;
+    const jsonStr = decodeURIComponent(
+      Array.prototype.map
+        .call(atob(clean), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const delta = JSON.parse(jsonStr) as WhatsAppSyncDelta;
+    if (!delta || typeof delta !== 'object') return null;
+
+    let mergedItems = [...existingItems];
+    let itemCountAdded = 0;
+
+    if (Array.isArray(delta.i) && delta.i.length > 0) {
+      for (const item of delta.i) {
+        const idx = mergedItems.findIndex((x) => x.id === item.id);
+        if (idx >= 0) {
+          mergedItems[idx] = { ...mergedItems[idx], ...item };
+        } else {
+          mergedItems.push(item);
+          itemCountAdded++;
+        }
+      }
+    }
+
+    let mergedLoans = [...existingLoans];
+    let loanCountUpdated = 0;
+
+    if (Array.isArray(delta.l) && delta.l.length > 0) {
+      for (const loan of delta.l) {
+        const idx = mergedLoans.findIndex((x) => x.id === loan.id);
+        if (idx >= 0) {
+          mergedLoans[idx] = loan;
+        } else {
+          mergedLoans.unshift(loan);
+        }
+        loanCountUpdated++;
+      }
+    }
+
+    const mergedSettings = {
+      ...existingSettings,
+      ...(delta.s || {}),
+    };
+
+    // Simpan ke storage
+    saveStoredItems(mergedItems);
+    saveStoredLoans(mergedLoans);
+    saveStoredSettings(mergedSettings);
+
+    return {
+      newItems: mergedItems,
+      newLoans: mergedLoans,
+      newSettings: mergedSettings,
+      itemCountAdded,
+      loanCountUpdated,
+    };
+  } catch (e) {
+    console.error('Error applying WhatsApp sync delta', e);
+    return null;
+  }
+}
+
 

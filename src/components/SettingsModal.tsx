@@ -19,6 +19,7 @@ interface SettingsModalProps {
   settings: AppSettings;
   onSaveSettings: (newSettings: AppSettings) => void;
   onDataReset: () => void;
+  onOpenSyncModal?: () => void;
 }
 
 const PRESET_ICONS = [
@@ -37,6 +38,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onSaveSettings,
   onDataReset,
+  onOpenSyncModal,
 }) => {
   const [formData, setFormData] = useState<AppSettings>(settings);
   const [successMsg, setSuccessMsg] = useState('');
@@ -539,6 +541,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <p className="text-[11px] text-emerald-900 leading-relaxed">
                 Salin tautan atau kode di bawah ini dari HP yang sudah Anda atur, lalu buka di Laptop atau kirim via WhatsApp ke perangkat lain untuk langsung menyinkronkan nama pesantren, logo, lokasi, dan nomor kontak seketika.
               </p>
+
+              {onOpenSyncModal && (
+                <div className="p-3 bg-white rounded-xl border border-emerald-300 shadow-2xs flex items-center justify-between gap-3">
+                  <div className="text-xs">
+                    <strong className="text-emerald-950 block font-bold">Sinkronisasi Penuh sipatmedia.vercel.app & Cloud SQL</strong>
+                    <span className="text-[11px] text-slate-500">Kirim atau tarik unit alat, peminjaman, dan agenda dengan Vercel</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenSyncModal();
+                    }}
+                    className="px-3 py-1.5 text-xs font-extrabold text-emerald-950 bg-amber-400 hover:bg-amber-300 rounded-xl transition-all shadow-xs shrink-0 flex items-center gap-1.5"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Buka Panel Vercel</span>
+                  </button>
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
                 <button

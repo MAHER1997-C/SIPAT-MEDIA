@@ -3,8 +3,10 @@ import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
 import { 
   Camera, Calendar, PackagePlus, FileText, BarChart3, 
   Clock, CheckCircle2, AlertTriangle, ArrowRight, 
-  Send, Shield, Sparkles 
+  Send, Shield, Sparkles, Share2
 } from 'lucide-react';
+import { generateWhatsAppSyncDelta } from '../utils/storage';
+import { openWhatsAppDirect } from '../utils/whatsapp';
 
 interface DashboardHomeViewProps {
   items: MediaItem[];
@@ -32,8 +34,31 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
   const availableCount = items.filter((i) => i.status === 'Tersedia').length;
   const borrowedCount = items.filter((i) => i.status === 'Sedang Dipinjam').length;
   const maintenanceCount = items.filter((i) => i.status === 'Dalam Perawatan').length;
-
   const pendingLoans = loans.filter((l) => l.status === 'Menunggu Konfirmasi');
+
+  const handleShareUpdatedWebToWhatsApp = () => {
+    const deltaCode = generateWhatsAppSyncDelta(items, loans, settings);
+    const targetDomain = 'https://sipatmedia.vercel.app';
+    const syncUrl = `${targetDomain}?sync_wa=${deltaCode}`;
+
+    const msg = `*SIPAT Media - ${settings.pesantrenName}*
+*${settings.mediaTeamName}*
+
+Assalamu'alaikum Warahmatullahi Wabarakatuh,
+Berikut tautan resmi sistem peminjaman alat multimedia terupdate:
+
+🔗 *Buka Aplikasi Terupdate*:
+${syncUrl}
+
+📊 *Status Alat Saat Ini*:
+• Total Alat: *${totalCount} unit*
+• Siap Dipakai (Tersedia): *${availableCount} unit*
+• Sedang Dipinjam: *${borrowedCount} unit*
+
+_Silakan klik tautan di atas untuk membuka katalog ${totalCount} alat & mengajukan pinjam._`;
+
+    openWhatsAppDirect(msg);
+  };
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -62,13 +87,22 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={() => onNavigate('loan-form')}
-              className="flex-1 sm:flex-initial px-3.5 py-2 text-xs font-extrabold text-emerald-950 bg-amber-300 hover:bg-amber-200 rounded-xl sm:rounded-2xl transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
+              className="px-3.5 py-2 text-xs font-extrabold text-emerald-950 bg-amber-300 hover:bg-amber-200 rounded-xl sm:rounded-2xl transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95"
             >
               <PackagePlus className="w-3.5 h-3.5 text-emerald-950" />
               <span>Pinjam Alat</span>
+            </button>
+
+            <button
+              onClick={handleShareUpdatedWebToWhatsApp}
+              className="px-3 py-2 text-xs font-bold text-white bg-white/20 hover:bg-white/30 rounded-xl sm:rounded-2xl transition-all flex items-center gap-1.5 shadow-2xs active:scale-95"
+              title="Kirim Tautan Terupdate ke WhatsApp agar data otomatis sinkron di HP peminjam"
+            >
+              <Share2 className="w-3.5 h-3.5 text-amber-300" />
+              <span className="text-[11px] font-bold">Share WA</span>
             </button>
 
             {settings.whatsappGroupLink && (

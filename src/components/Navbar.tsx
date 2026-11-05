@@ -2,7 +2,8 @@ import React from 'react';
 import { 
   LayoutDashboard, Camera, Calendar, ShieldCheck, Lock, Unlock, 
   Settings as SettingsIcon, PackagePlus, FileText, BarChart3, 
-  Edit3, Video, Radio, Landmark, Film, Sparkles, Tv, Image as ImageIcon
+  Edit3, Video, Radio, Landmark, Film, Sparkles, Tv, Image as ImageIcon,
+  RefreshCw
 } from 'lucide-react';
 import { AppSettings } from '../types';
 
@@ -13,6 +14,7 @@ interface NavbarProps {
   onOpenAdminModal: () => void;
   onAdminLogout: () => void;
   onOpenSettings: () => void;
+  onOpenSyncModal: () => void;
   pendingLoansCount: number;
   settings: AppSettings;
 }
@@ -24,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminModal,
   onAdminLogout,
   onOpenSettings,
+  onOpenSyncModal,
   pendingLoansCount,
   settings,
 }) => {
@@ -194,7 +197,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Zone 3: Role Switcher / Admin Login Action */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Sync Cloud & Vercel Button */}
+            <button
+              onClick={onOpenSyncModal}
+              title="Sinkronisasi Data dengan Vercel (sipatmedia.vercel.app)"
+              className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100/90 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs border border-emerald-200"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
+              <span className="hidden sm:inline">Sync Vercel</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Cloud SQL Terhubung" />
+            </button>
+
             {isAdmin ? (
               <div className="flex items-center gap-1 bg-emerald-50 rounded-xl sm:rounded-2xl p-0.5 sm:p-1 shadow-2xs">
                 <span className="hidden md:inline-flex items-center gap-1 text-xs font-extrabold text-emerald-800 px-2">
