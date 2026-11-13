@@ -13,7 +13,7 @@ import {
 import {
   checkServerHealth,
   fetchCloudItems, saveCloudItem, deleteCloudItem,
-  fetchCloudLoans, createCloudLoan, updateCloudLoan,
+  fetchCloudLoans, createCloudLoan, updateCloudLoan, deleteCloudLoan,
   fetchCloudEvents, createCloudEvent, deleteCloudEvent,
   fetchCloudSettings, saveCloudSettings,
   sendFullSyncBundle
@@ -29,7 +29,6 @@ import { AdminAuthModal } from './components/AdminAuthModal';
 import { ItemModal } from './components/ItemModal';
 import { EventModal } from './components/EventModal';
 import { SettingsModal } from './components/SettingsModal';
-import { VercelSyncModal } from './components/VercelSyncModal';
 
 export default function App() {
   // Application Data States
@@ -54,7 +53,6 @@ export default function App() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<MediaEvent | null>(null);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
   // Cloud connectivity status
   const [cloudStatus, setCloudStatus] = useState<'connecting' | 'connected' | 'offline'>('connecting');
@@ -523,6 +521,59 @@ export default function App() {
     }
   };
 
+  // Delete Loan History by Admin (releases active items back to Tersedia if needed)
+  const handleDeleteLoan = async (loanId: string) => {
+    const loanToDelete = loans.find((l) => l.id === loanId);
+    if (!loanToDelete) return;
+
+    const updatedLoans = loans.filter((l) => l.id !== loanId);
+    handleUpdateLoans(updatedLoans);
+
+    // Jika berkas yang dihapus berstatus Disetujui, kembalikan status alat yang terikat ke Tersedia
+    const itemIds = new Set(loanToDelete.items.map((i) => i.itemId));
+    const affectedItems =
+      loanToDelete.status === 'Disetujui'
+        ? items.filter(
+            (item) => itemIds.has(item.id) || item.currentBorrower?.loanId === loanId
+          )
+        : [];
+
+    if (affectedItems.length > 0) {
+      const affectedIds = new Set(affectedItems.map((i) => i.id));
+      const updatedItems = items.map((item) => {
+        if (affectedIds.has(item.id)) {
+          return {
+            ...item,
+            status: 'Tersedia' as const,
+            currentBorrower: undefined,
+          };
+        }
+        return item;
+      });
+      handleUpdateItems(updatedItems);
+    }
+
+    try {
+      await deleteCloudLoan(loanId);
+      for (const it of affectedItems) {
+        await saveCloudItem(
+          {
+            ...it,
+            status: 'Tersedia',
+            currentBorrower: undefined,
+          },
+          false
+        );
+      }
+      setCloudStatus('connected');
+      showToast(`Riwayat peminjaman ${loanId} telah dihapus dari database.`);
+    } catch (e) {
+      console.error('Failed to delete loan from database:', e);
+      setCloudStatus('offline');
+      showToast(`Riwayat ${loanId} dihapus lokal (gagal hapus di database online).`);
+    }
+  };
+
   // Quick borrow from inventory card
   const handleQuickBorrow = (item: MediaItem) => {
     setPreSelectedItemId(item.id);
@@ -551,7 +602,6 @@ export default function App() {
             onOpenAdminModal={() => setIsAdminModalOpen(true)}
             onAdminLogout={handleAdminLogout}
             onOpenSettings={() => setIsSettingsModalOpen(true)}
-            onOpenSyncModal={() => setIsSyncModalOpen(true)}
             pendingLoansCount={pendingLoansCount}
             settings={settings}
             cloudStatus={cloudStatus}
@@ -627,6 +677,7 @@ export default function App() {
               onApproveLoan={handleApproveLoan}
               onReturnLoan={handleReturnLoan}
               onRejectLoan={handleRejectLoan}
+              onDeleteLoan={handleDeleteLoan}
               onOpenAdminAuth={() => setIsAdminModalOpen(true)}
             />
           )}
@@ -681,6 +732,7 @@ export default function App() {
         onClose={() => setIsEventModalOpen(false)}
         onSave={handleSaveEvent}
         initialEvent={editingEvent}
+        items={items}
       />
 
       {/* Settings & WhatsApp Group Link Modal */}
@@ -690,19 +742,6 @@ export default function App() {
         settings={settings}
         onSaveSettings={handleSaveSettings}
         onDataReset={handleDataReset}
-        onOpenSyncModal={() => setIsSyncModalOpen(true)}
-      />
-
-      {/* Vercel & Cloud SQL Bidirectional Sync Modal */}
-      <VercelSyncModal
-        isOpen={isSyncModalOpen}
-        onClose={() => setIsSyncModalOpen(false)}
-        settings={settings}
-        items={items}
-        loans={loans}
-        events={events}
-        onDataSynced={() => loadCloudData(false)}
-        showToast={showToast}
       />
     </div>
   );

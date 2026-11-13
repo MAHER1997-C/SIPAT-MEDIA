@@ -7,6 +7,7 @@ import {
   supaClientGetLoans,
   supaClientCreateLoan,
   supaClientUpdateLoan,
+  supaClientDeleteLoan,
   supaClientGetEvents,
   supaClientSaveEvent,
   supaClientDeleteEvent,
@@ -240,6 +241,21 @@ export async function updateCloudLoan(id: string, patch: Partial<LoanRequest>): 
   } catch (err) {
     if (isClientSupabaseConfigured) {
       await supaClientUpdateLoan(id, patch);
+      return;
+    }
+    throw err;
+  }
+}
+
+export async function deleteCloudLoan(id: string): Promise<void> {
+  try {
+    const res = await fetch(getApiUrl(`/api/loans/${encodeURIComponent(id)}`), {
+      method: 'DELETE',
+    });
+    await parseJsonResponse(res);
+  } catch (err) {
+    if (isClientSupabaseConfigured) {
+      await supaClientDeleteLoan(id);
       return;
     }
     throw err;

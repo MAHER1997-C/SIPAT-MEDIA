@@ -2,8 +2,7 @@ import React from 'react';
 import { 
   LayoutDashboard, Camera, Calendar, ShieldCheck, Lock, Unlock, 
   Settings as SettingsIcon, PackagePlus, FileText, BarChart3, 
-  Edit3, Video, Radio, Landmark, Film, Sparkles, Tv, Image as ImageIcon,
-  RefreshCw
+  Edit3, Video, Radio, Landmark, Film, Sparkles, Tv
 } from 'lucide-react';
 import { AppSettings } from '../types';
 
@@ -14,7 +13,6 @@ interface NavbarProps {
   onOpenAdminModal: () => void;
   onAdminLogout: () => void;
   onOpenSettings: () => void;
-  onOpenSyncModal: () => void;
   pendingLoansCount: number;
   settings: AppSettings;
   cloudStatus?: 'connecting' | 'connected' | 'offline';
@@ -28,7 +26,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminModal,
   onAdminLogout,
   onOpenSettings,
-  onOpenSyncModal,
   pendingLoansCount,
   settings,
   cloudStatus = 'connecting',
@@ -200,49 +197,36 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </nav>
 
-          {/* Zone 3: Role Switcher / Admin Login Action */}
+          {/* Zone 3: Supabase Status Indicator & Admin Login Action */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Sync Cloud / Supabase & Vercel Button */}
-            <button
-              onClick={onOpenSyncModal}
+            {/* Indikator Status Supabase (Pasif, tanpa popup sinkronisasi) */}
+            <div
               title={
                 cloudStatus === 'connected'
-                  ? `Terhubung Online: ${dbProvider || 'Supabase / PostgreSQL'}`
+                  ? `Terhubung ke ${dbProvider || 'Supabase / PostgreSQL'}`
                   : cloudStatus === 'connecting'
-                  ? 'Menghubungkan ke database online...'
-                  : 'Mode Lokal (Database online belum terhubung)'
+                  ? 'Menghubungkan ke database Supabase...'
+                  : 'Mode Lokal (Database Supabase belum terjangkau)'
               }
-              className={`px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-2xs border ${
-                cloudStatus === 'offline'
-                  ? 'text-amber-900 bg-amber-50 hover:bg-amber-100 border-amber-200'
-                  : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100/90 border-emerald-200'
-              }`}
+              className="px-2 py-1 text-[11px] font-semibold text-slate-600 flex items-center gap-1.5 whitespace-nowrap shrink-0 select-none"
             >
-              <RefreshCw
-                className={`w-3.5 h-3.5 ${
-                  cloudStatus === 'connecting' ? 'animate-spin text-amber-600' : cloudStatus === 'offline' ? 'text-amber-700' : 'text-emerald-700'
-                }`}
-              />
-              <span className="hidden sm:inline">
-                {cloudStatus === 'connected' ? 'Cloud Sync' : cloudStatus === 'connecting' ? 'Menghubungkan...' : 'Mode Lokal'}
-              </span>
               <span
-                className={`w-2 h-2 rounded-full ${
+                className={`w-2 h-2 rounded-full shrink-0 ${
                   cloudStatus === 'connected'
-                    ? 'bg-emerald-500 animate-pulse'
+                    ? 'bg-emerald-500'
                     : cloudStatus === 'connecting'
                     ? 'bg-amber-400 animate-pulse'
                     : 'bg-rose-500'
                 }`}
-                title={
-                  cloudStatus === 'connected'
-                    ? `Online (${dbProvider || 'Database'})`
-                    : cloudStatus === 'connecting'
-                    ? 'Menghubungkan...'
-                    : 'Offline / Penyimpanan Lokal'
-                }
               />
-            </button>
+              <span className="hidden sm:inline">
+                {cloudStatus === 'connected'
+                  ? 'Supabase Online'
+                  : cloudStatus === 'connecting'
+                  ? 'Menghubungkan...'
+                  : 'Mode Lokal'}
+              </span>
+            </div>
 
             {isAdmin ? (
               <div className="flex items-center gap-1 bg-emerald-50 rounded-xl sm:rounded-2xl p-0.5 sm:p-1 shadow-2xs">

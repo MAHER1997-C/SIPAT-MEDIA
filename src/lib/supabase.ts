@@ -194,6 +194,13 @@ export async function supaClientUpdateLoan(id: string, patch: Partial<LoanReques
   if (error) throw error;
 }
 
+export async function supaClientDeleteLoan(id: string): Promise<void> {
+  const client = getClientSupabase();
+  if (!client) throw new Error('Supabase client not configured');
+  const { error } = await client.from('loan_requests').delete().eq('id', id);
+  if (error) throw error;
+}
+
 export async function supaClientGetEvents(): Promise<MediaEvent[]> {
   const client = getClientSupabase();
   if (!client) throw new Error('Supabase client not configured');

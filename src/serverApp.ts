@@ -9,6 +9,7 @@ import {
   dbGetLoans,
   dbCreateLoan,
   dbUpdateLoan,
+  dbDeleteLoan,
   dbGetEvents,
   dbCreateEvent,
   dbDeleteEvent,
@@ -242,6 +243,17 @@ export const createApiApp = () => {
     } catch (err: any) {
       console.error(`PUT /api/loans/${req.params.id} failed:`, err);
       res.status(500).json({ error: err.message || 'Gagal mengupdate permohonan' });
+    }
+  });
+
+  app.delete('/api/loans/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await dbDeleteLoan(id);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error(`DELETE /api/loans/${req.params.id} failed:`, err);
+      res.status(500).json({ error: err.message || 'Gagal menghapus riwayat peminjaman' });
     }
   });
 

@@ -3,7 +3,7 @@ import { LoanRequest, LoanStatus, MediaItem, AppSettings } from '../types';
 import { 
   Search, CheckCircle2, Clock, XCircle, RotateCcw, 
   Send, Copy, Check, MessageSquare, Phone, Calendar, 
-  Shield, ArrowRight, MapPin 
+  Shield, ArrowRight, MapPin, Trash2 
 } from 'lucide-react';
 import { 
   generateWhatsAppMessage, 
@@ -21,6 +21,7 @@ interface LoansManagementViewProps {
   onApproveLoan: (loanId: string, adminName: string, pickupLocation?: string) => void;
   onReturnLoan: (loanId: string, returnNotes: string) => void;
   onRejectLoan: (loanId: string, reason: string) => void;
+  onDeleteLoan: (loanId: string) => void;
   onOpenAdminAuth: () => void;
 }
 
@@ -32,6 +33,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
   onApproveLoan,
   onReturnLoan,
   onRejectLoan,
+  onDeleteLoan,
   onOpenAdminAuth,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,6 +55,9 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
   // Reject dialog state
   const [rejectingLoan, setRejectingLoan] = useState<LoanRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('Jadwal bentrok dengan kegiatan liputan utama pondok.');
+
+  // Delete confirmation dialog state
+  const [deletingLoan, setDeletingLoan] = useState<LoanRequest | null>(null);
 
   // Filtered loans
   const filteredLoans = useMemo(() => {
@@ -428,7 +433,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
 
                   {/* Right Admin Actions */}
                   {isAdmin && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {isPending && (
                         <>
                           <button
@@ -459,6 +464,16 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                           <span>Tandai Sudah Dikembalikan</span>
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => setDeletingLoan(loan)}
+                        title="Hapus permanen riwayat peminjaman ini"
+                        className="px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus</span>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -564,6 +579,58 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Loan History Confirmation Modal */}
+      {deletingLoan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+              <div className="p-2.5 bg-rose-50 text-rose-600 rounded-2xl">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Hapus Riwayat Peminjaman</h3>
+                <p className="text-xs text-slate-500">
+                  {deletingLoan.id} · {deletingLoan.unitName}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs text-slate-600 leading-relaxed">
+              <p>
+                Apakah Anda yakin ingin menghapus permanen riwayat peminjaman atas nama{' '}
+                <strong className="text-slate-900">{deletingLoan.borrowerName}</strong> ({deletingLoan.items.length} alat) dari database?
+              </p>
+              {deletingLoan.status === 'Disetujui' && (
+                <p className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-950 font-medium">
+                  Catatan: Peminjaman ini berstatus sedang berjalan. Alat yang terikat akan otomatis dikembalikan statusnya menjadi Tersedia.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingLoan(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteLoan(deletingLoan.id);
+                  setDeletingLoan(null);
+                }}
+                className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Permanen</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

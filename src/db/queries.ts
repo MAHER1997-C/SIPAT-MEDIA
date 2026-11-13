@@ -682,6 +682,18 @@ export async function dbUpdateLoan(id: string, patch: Partial<LoanRequest>): Pro
   await db.update(loanRequests).set(updateValues).where(eq(loanRequests.id, id));
 }
 
+export async function dbDeleteLoan(id: string): Promise<void> {
+  const driver = getActiveDbDriver();
+  if (driver.mode === 'supabase-rest') {
+    const supa = getServerSupabase()!;
+    const { error } = await supa.from('loan_requests').delete().eq('id', id);
+    if (error) throw error;
+    return;
+  }
+
+  await db.delete(loanRequests).where(eq(loanRequests.id, id));
+}
+
 // ==========================================
 // MEDIA EVENTS QUERIES
 // ==========================================
