@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppSettings } from '../types';
 import { 
   X, Save, Settings, Download, Upload, RefreshCw, KeyRound, 
@@ -12,12 +12,13 @@ import {
   exportSettingsJson, importSettingsJson 
 } from '../utils/storage';
 import { copyToClipboard } from '../utils/whatsapp';
+import { sendFullSyncBundle } from '../services/api';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   settings: AppSettings;
-  onSaveSettings: (newSettings: AppSettings) => void;
+  onSaveSettings: (newSettings: AppSettings) => Promise<boolean> | void;
   onDataReset: () => void;
   onOpenSyncModal?: () => void;
 }
@@ -46,6 +47,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [pasteCodeInput, setPasteCodeInput] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Pastikan form selalu sinkron dengan pengaturan terbaru dari database online saat modal dibuka
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(settings);
+      setSuccessMsg('');
+    }
+  }, [isOpen, settings]);
 
   if (!isOpen) return null;
 
@@ -90,13 +100,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       const imported = importSettingsJson(content);
       if (imported) {
         setFormData(imported);
-        onSaveSettings(imported);
-        setSuccessMsg(`Berhasil! Pengaturan "${imported.pesantrenName}" berhasil diterapkan.`);
+        await onSaveSettings(imported);
+        setSuccessMsg(`Berhasil! Pengaturan "${imported.pesantrenName}" berhasil diterapkan & disimpan.`);
         setTimeout(() => setSuccessMsg(''), 3500);
       } else {
         setImportStatus('Gagal membaca file pengaturan JSON. Pastikan file sesuai.');
@@ -106,14 +116,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     reader.readAsText(file);
   };
 
-  const handleApplyPasteCode = () => {
+  const handleApplyPasteCode = async () => {
     if (!pasteCodeInput.trim()) return;
     const decoded = decodeSettingsFromCode(pasteCodeInput);
     if (decoded) {
       setFormData(decoded);
-      onSaveSettings(decoded);
+      await onSaveSettings(decoded);
       setPasteCodeInput('');
-      setSuccessMsg(`Berhasil! Pengaturan lembaga "${decoded.pesantrenName}" berhasil diterapkan.`);
+      setSuccessMsg(`Berhasil! Pengaturan lembaga "${decoded.pesantrenName}" berhasil diterapkan & disimpan.`);
       setTimeout(() => setSuccessMsg(''), 3500);
     } else {
       setImportStatus('Kode tidak valid atau format salah.');
@@ -121,14 +131,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveSettings(formData);
-    setSuccessMsg('Pengaturan lembaga & tampilan berhasil disimpan!');
-    setTimeout(() => {
-      setSuccessMsg('');
-      onClose();
-    }, 1200);
+    setIsSaving(true);
+    try {
+      const synced = await onSaveSettings(formData);
+      setSuccessMsg(
+        synced === false
+          ? 'Tersimpan di browser lokal (Database online belum terjangkau).'
+          : 'Pengaturan berhasil disimpan & tersinkronisasi online ke database!'
+      );
+      setTimeout(() => {
+        setSuccessMsg('');
+        onClose();
+      }, 1200);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleExportBackup = () => {
@@ -149,13 +168,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       const success = importBackupData(content);
       if (success) {
-        setImportStatus('Data berhasil diimpor!');
+        try {
+          const parsed = JSON.parse(content);
+          await sendFullSyncBundle({
+            settings: parsed.settings,
+            items: parsed.items,
+            loans: parsed.loans,
+            events: parsed.events,
+          });
+          setImportStatus('Data berhasil diimpor & disinkronkan ke database online!');
+        } catch {
+          setImportStatus('Data berhasil diimpor secara lokal (gagal sinkron ke server).');
+        }
         onDataReset();
-        setTimeout(() => setImportStatus(''), 2500);
+        setTimeout(() => setImportStatus(''), 3500);
       } else {
         setImportStatus('Gagal membaca file JSON backup.');
       }
@@ -686,10 +716,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 text-xs font-extrabold text-emerald-950 bg-amber-300 hover:bg-amber-200 rounded-2xl transition-all flex items-center gap-1.5 shadow-sm"
+              disabled={isSaving}
+              className="px-6 py-2.5 text-xs font-extrabold text-emerald-950 bg-amber-300 hover:bg-amber-200 disabled:opacity-60 rounded-2xl transition-all flex items-center gap-1.5 shadow-sm"
             >
               <Save className="w-4 h-4 text-emerald-950" />
-              <span>Simpan Perubahan</span>
+              <span>{isSaving ? 'Menyimpan ke Cloud...' : 'Simpan Perubahan'}</span>
             </button>
           </div>
         </form>

@@ -1,6 +1,0 @@
-{
-  "summary": "Rencana arsitektur dan implementasi integrasi database cloud PostgreSQL (Cloud SQL) dengan Drizzle ORM dan Express server untuk menyinkronkan data inventaris 27 alat, peminjaman, kegiatan, dan pengaturan PPTQ Qoryatul Qur'an di seluruh perangkat (HP & laptop) secara real-time. Termasuk migrasi otomatis data bawaan dan fallback cerdas.",
-  "updatedAt": "2026-11-05T10:22:18.604973870Z",
-  "requestFeedback": true,
-  "userFacing": true
-}

@@ -2,20 +2,88 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema.ts';
 
-// Add global connection pool caching to persist across hot-reloads
+// Add global connection pool caching to persist across hot-reloads & serverless warm starts
 declare global {
   var _postgresPool: Pool | undefined;
 }
 
-// Function to create or retrieve the connection pool using object method or connection string.
+/**
+ * Membersihkan query parameter ?sslmode=... pada connection string Supabase/Vercel
+ * agar node-postgres (pg) selalu menghormati opsi ssl: { rejectUnauthorized: false }.
+ */
+function sanitizeConnectionString(rawUrl: string): { cleanUrl: string; isLocal: boolean } {
+  const isLocal = rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1');
+  try {
+    const parsed = new URL(rawUrl);
+    parsed.searchParams.delete('sslmode');
+    parsed.searchParams.delete('supa');
+    return { cleanUrl: parsed.toString(), isLocal };
+  } catch {
+    return { cleanUrl: rawUrl, isLocal };
+  }
+}
+
+/**
+ * Menentukan connection string atau parameter Postgres yang tersedia di environment:
+ * Prioritas: Supabase/Vercel Postgres URL -> Host Params -> Cloud SQL (AI Studio)
+ */
+export function getDatabaseConfigInfo(): {
+  hasPostgres: boolean;
+  provider: 'Supabase / PostgreSQL' | 'Cloud SQL PostgreSQL' | 'None';
+} {
+  const connStr =
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.DATABASE_URL ||
+    process.env.SUPABASE_DB_URL ||
+    process.env.POSTGRES_PRISMA_URL;
+
+  if (connStr) {
+    return { hasPostgres: true, provider: 'Supabase / PostgreSQL' };
+  }
+
+  if (process.env.POSTGRES_HOST && process.env.POSTGRES_USER) {
+    return { hasPostgres: true, provider: 'Supabase / PostgreSQL' };
+  }
+
+  if (process.env.SQL_HOST && process.env.SQL_USER) {
+    return { hasPostgres: true, provider: 'Cloud SQL PostgreSQL' };
+  }
+
+  return { hasPostgres: false, provider: 'None' };
+}
+
 export const createPool = () => {
   if (!global._postgresPool) {
-    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-    if (connectionString) {
+    const rawConnStr =
+      process.env.POSTGRES_URL ||
+      process.env.POSTGRES_URL_NON_POOLING ||
+      process.env.DATABASE_URL ||
+      process.env.SUPABASE_DB_URL ||
+      process.env.POSTGRES_PRISMA_URL;
+
+    if (rawConnStr) {
+      const { cleanUrl, isLocal } = sanitizeConnectionString(rawConnStr);
       global._postgresPool = new Pool({
-        connectionString,
-        ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
-        max: 10,
+        connectionString: cleanUrl,
+        ssl: isLocal ? false : { rejectUnauthorized: false },
+        max: 5,
+        idleTimeoutMillis: 20000,
+        connectionTimeoutMillis: 15000,
+      });
+    } else if (process.env.POSTGRES_HOST && process.env.POSTGRES_USER) {
+      const isLocal =
+        process.env.POSTGRES_HOST.includes('localhost') ||
+        process.env.POSTGRES_HOST.includes('127.0.0.1');
+      global._postgresPool = new Pool({
+        host: process.env.POSTGRES_HOST,
+        port: Number(process.env.POSTGRES_PORT || 5432),
+        user: process.env.POSTGRES_USER,
+        password: process.env.POSTGRES_PASSWORD,
+        database: process.env.POSTGRES_DATABASE || 'postgres',
+        ssl: isLocal ? false : { rejectUnauthorized: false },
+        max: 5,
+        idleTimeoutMillis: 20000,
         connectionTimeoutMillis: 15000,
       });
     } else {
@@ -37,8 +105,5 @@ export const createPool = () => {
   return global._postgresPool;
 };
 
-// Create or retrieve the pool instance.
-const pool = createPool();
-
-// Initialize Drizzle with the pool and schema.
+export const pool = createPool();
 export const db = drizzle(pool, { schema });

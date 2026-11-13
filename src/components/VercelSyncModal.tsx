@@ -172,19 +172,24 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
           saveStoredSettings(parsed.settings);
         }
 
-        // Send to Cloud SQL
-        await sendFullSyncBundle({
+        // Kirim ke database online (Supabase / PostgreSQL)
+        const syncRes = await sendFullSyncBundle({
           settings: parsed.settings,
           items: parsed.items,
           loans: parsed.loans,
           events: parsed.events,
-        }).catch((err) => console.warn('Could not post to Cloud SQL:', err));
+        }).catch((err: any) => ({ success: false, message: err?.message || 'Gagal terhubung ke server' }));
 
         onDataSynced();
-        setStatusMsg('Berhasil! Seluruh data dari Vercel telah disinkronkan ke Cloud SQL.');
-        showToast('Sinkronisasi data ke Cloud SQL berhasil!');
+        if (syncRes && syncRes.success) {
+          setStatusMsg('Berhasil! Seluruh data telah disinkronkan ke database online (Supabase / PostgreSQL).');
+          showToast('Sinkronisasi data ke database online berhasil!');
+        } else {
+          setStatusMsg(`Tersimpan lokal, namun gagal sinkron ke server: ${syncRes?.message || 'Database belum aktif'}`);
+          showToast('Tersimpan lokal, gagal sinkron ke database server.');
+        }
         setPasteBundleInput('');
-        setTimeout(() => setStatusMsg(''), 4000);
+        setTimeout(() => setStatusMsg(''), 5000);
       }
     } catch (err: any) {
       setStatusMsg(`Gagal: ${err.message}`);
@@ -209,17 +214,22 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
           if (parsed.events) saveStoredEvents(parsed.events);
           if (parsed.settings) saveStoredSettings(parsed.settings);
 
-          await sendFullSyncBundle({
+          const syncRes = await sendFullSyncBundle({
             settings: parsed.settings,
             items: parsed.items,
             loans: parsed.loans,
             events: parsed.events,
-          }).catch(() => {});
+          }).catch((err: any) => ({ success: false, message: err?.message }));
 
           onDataSynced();
-          setStatusMsg('File JSON berhasil diimpor & disimpan ke Cloud SQL!');
-          showToast('Data berhasil diimpor & disimpan ke database.');
-          setTimeout(() => setStatusMsg(''), 4000);
+          if (syncRes && syncRes.success) {
+            setStatusMsg('File JSON berhasil diimpor & disimpan ke database online!');
+            showToast('Data berhasil diimpor & disimpan ke database online.');
+          } else {
+            setStatusMsg('File JSON diterapkan lokal (database server belum aktif).');
+            showToast('Data diimpor secara lokal.');
+          }
+          setTimeout(() => setStatusMsg(''), 4500);
         }
       } catch (err: any) {
         setStatusMsg(`Gagal membaca file: ${err.message}`);
@@ -265,14 +275,16 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base sm:text-lg font-extrabold text-white">
-                  Sinkronisasi Preview & Vercel
+                  Sinkronisasi Cloud & Vercel
                 </h3>
                 <span className="text-[10px] bg-emerald-500/80 text-white font-extrabold px-2 py-0.5 rounded-full border border-emerald-400">
-                  Cloud SQL
+                  {healthStatus?.database === 'connected'
+                    ? healthStatus.provider || 'Supabase / Cloud'
+                    : 'Supabase Ready'}
                 </span>
               </div>
               <p className="text-xs text-emerald-100">
-                Penyelarasan data inventaris PPTQ Qoryatul Qur'an dengan {vercelDomain}
+                Penyelarasan data inventaris PPTQ Qoryatul Qur'an dengan database online & {vercelDomain}
               </p>
             </div>
           </div>
@@ -287,11 +299,29 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
         {/* Real-time Status Banner */}
         <div className="bg-slate-50 border-b border-slate-200/80 px-5 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-extrabold text-slate-800">Status Database Cloud SQL:</span>
-            <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-md">
-              Aktif ({items.length} Alat • {loans.length} Pinjaman • {events.length} Agenda)
-            </span>
+            <div
+              className={`w-2.5 h-2.5 rounded-full ${
+                isLoadingHealth
+                  ? 'bg-amber-400 animate-pulse'
+                  : healthStatus?.database === 'connected'
+                  ? 'bg-emerald-500 animate-pulse'
+                  : 'bg-rose-500'
+              }`}
+            />
+            <span className="font-extrabold text-slate-800">Status Database:</span>
+            {isLoadingHealth ? (
+              <span className="text-amber-700 font-bold bg-amber-100 px-2 py-0.5 rounded-md">
+                Memeriksa koneksi...
+              </span>
+            ) : healthStatus?.database === 'connected' ? (
+              <span className="text-emerald-700 font-bold bg-emerald-100 px-2 py-0.5 rounded-md">
+                {healthStatus.provider || 'Terhubung'} ({items.length} Alat • {loans.length} Pinjaman • {events.length} Agenda)
+              </span>
+            ) : (
+              <span className="text-rose-700 font-bold bg-rose-100 px-2 py-0.5 rounded-md">
+                Mode Lokal ({healthStatus?.error ? 'Koneksi gagal' : 'Menunggu deploy API/Supabase'})
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -337,7 +367,7 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
             }`}
           >
             <FileCode className="w-3.5 h-3.5" />
-            <span>Panduan Vercel Hosting</span>
+            <span>Panduan Supabase & Vercel</span>
           </button>
         </div>
 
@@ -462,10 +492,10 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
               <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 space-y-2">
                 <div className="flex items-center gap-2 text-amber-950 font-extrabold text-xs">
                   <Database className="w-4 h-4 text-amber-600" />
-                  <span>Tarik & Simpan Data dari Vercel ke Cloud SQL</span>
+                  <span>Tarik & Simpan Data ke Database Online (Supabase / PostgreSQL)</span>
                 </div>
                 <p className="text-xs text-amber-900 leading-relaxed">
-                  Jika sebelumnya Anda atau tim pernah menginput alat, permohonan pinjam, atau agenda di <strong>{vercelDomain}</strong> dan ingin data tersebut tersimpan permanen di Cloud SQL preview ini, tempelkan kodenya di bawah.
+                  Jika Anda memiliki kode atau file JSON cadangan dari perangkat lain, tempelkan di bawah untuk langsung menyimpannya ke database online Supabase agar tersinkron di semua HP.
                 </p>
               </div>
 
@@ -477,7 +507,7 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
                   rows={4}
                   value={pasteBundleInput}
                   onChange={(e) => setPasteBundleInput(e.target.value)}
-                  placeholder="Tempel kode sinkronisasi atau isi file JSON dari sipat.vercel.app di sini..."
+                  placeholder="Tempel kode sinkronisasi atau isi file JSON dari sipatmedia.vercel.app di sini..."
                   className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
@@ -485,7 +515,7 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
                 <label className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer flex items-center gap-1.5">
                   <Upload className="w-3.5 h-3.5 text-slate-600" />
-                  <span>Atau Unggah File JSON dari Vercel</span>
+                  <span>Atau Unggah File JSON</span>
                   <input
                     type="file"
                     accept=".json"
@@ -501,28 +531,28 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
                   className="px-5 py-2 text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 rounded-xl transition-all shadow-xs flex items-center gap-1.5"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  <span>Simpan ke Cloud SQL Sekarang</span>
+                  <span>Simpan ke Database Sekarang</span>
                 </button>
               </div>
             </div>
           )}
 
-          {/* TAB 3: PANDUAN VERCEL */}
+          {/* TAB 3: PANDUAN SUPABASE & VERCEL */}
           {activeTab === 'guide' && (
             <div className="space-y-4">
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
                 <div className="flex items-center gap-2 text-slate-900 font-extrabold text-xs">
                   <Info className="w-4 h-4 text-emerald-600" />
-                  <span>Mengapa sebelumnya data tersimpan di HP masing-masing?</span>
+                  <span>Integrasi Otomatis Supabase + Vercel</span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Pada deploy awal Vercel, proyek dijalankan sebagai aplikasi web frontend statis tanpa backend database, sehingga data otomatis tersimpan di memori browser (<code>localStorage</code>) masing-masing HP.
+                  Aplikasi ini kini otomatis mendeteksi koneksi database <strong>Supabase</strong> (<code>POSTGRES_URL</code>, <code>DATABASE_URL</code>, <code>SUPABASE_URL</code>, <code>SUPABASE_SERVICE_ROLE_KEY</code>, atau <code>NEXT_PUBLIC_SUPABASE_*</code>) dan membuatkan tabel secara otomatis saat diakses pertama kali.
                 </p>
               </div>
 
               <div className="space-y-3">
                 <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                  Solusi Permanen yang Sudah Disiapkan di Kode Ini:
+                  Checklist Agar HP Lain Langsung Tersinkron Online:
                 </h4>
 
                 <div className="space-y-2.5">
@@ -531,8 +561,8 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
                       1
                     </span>
                     <div className="text-xs text-slate-700">
-                      <strong className="text-slate-900 block font-bold">API Serverless Vercel Sudah Dibuat</strong>
-                      File <code>api/index.ts</code> dan <code>vercel.json</code> sudah kami sediakan di dalam proyek ini. Begitu Anda melakukan commit & push ke GitHub, Vercel otomatis menjalankan backend API.
+                      <strong className="text-slate-900 block font-bold">Push Pembaruan Kode ke GitHub & Redeploy Vercel</strong>
+                      Pastikan pembaruan terbaru (termasuk <code>api/index.ts</code>, <code>vercel.json</code>, dan driver Supabase) sudah di-push ke repository GitHub yang terhubung ke Vercel.
                     </div>
                   </div>
 
@@ -541,8 +571,8 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
                       2
                     </span>
                     <div className="text-xs text-slate-700">
-                      <strong className="text-slate-900 block font-bold">Database Default 27 Alat PPTQ Qoryatul Qur'an</strong>
-                      Kode bawaan di <code>seedData.ts</code> sudah kami perbarui dengan 27 alat resmi, 4 pinjaman, 10 agenda kegiatan, nomor admin 081515509831, dan lokasi Kantor Media. Siapa pun yang membuka sipatmedia.vercel.app langsung melihat data ini.
+                      <strong className="text-slate-900 block font-bold">Tabel Supabase Terbentuk Otomatis (Plus File SQL Opsional)</strong>
+                      Saat API pertama kali dipanggil, server otomatis membuat tabel <code>app_settings</code>, <code>media_items</code>, <code>loan_requests</code>, dan <code>media_events</code> di Supabase. File SQL manual juga tersedia di <code>supabase/schema.sql</code>.
                     </div>
                   </div>
 
@@ -551,8 +581,8 @@ _Silakan klik tautan di atas untuk melihat katalog ${items.length} alat & mengaj
                       3
                     </span>
                     <div className="text-xs text-slate-700">
-                      <strong className="text-slate-900 block font-bold">Hubungkan Database Online di Vercel (1-Klik Gratis)</strong>
-                      Di dashboard Vercel: Buka project <code>sipatmedia</code> &rarr; Klik tab <strong>Storage</strong> &rarr; Klik <strong>Create Database</strong> &rarr; Pilih <strong>Postgres</strong> (gratis). Vercel akan otomatis menyinkronkan seluruh HP santri dan ustadz secara online 24 jam!
+                      <strong className="text-slate-900 block font-bold">Cek Indikator Hijau di Pojok Kanan Atas</strong>
+                      Setelah redeploy, buka <code>{vercelDomain}</code> di HP lain. Jika indikator bertuliskan <strong>Cloud Sync</strong> (titik hijau), semua perubahan pengaturan, alat, dan pinjaman otomatis tersimpan di Supabase.
                     </div>
                   </div>
                 </div>

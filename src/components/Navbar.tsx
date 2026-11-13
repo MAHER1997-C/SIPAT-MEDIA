@@ -17,6 +17,8 @@ interface NavbarProps {
   onOpenSyncModal: () => void;
   pendingLoansCount: number;
   settings: AppSettings;
+  cloudStatus?: 'connecting' | 'connected' | 'offline';
+  dbProvider?: string;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -29,6 +31,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSyncModal,
   pendingLoansCount,
   settings,
+  cloudStatus = 'connecting',
+  dbProvider,
 }) => {
   // Render logo based on admin settings
   const renderLogoIcon = () => {
@@ -198,15 +202,46 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Zone 3: Role Switcher / Admin Login Action */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Sync Cloud & Vercel Button */}
+            {/* Sync Cloud / Supabase & Vercel Button */}
             <button
               onClick={onOpenSyncModal}
-              title="Sinkronisasi Data dengan Vercel (sipatmedia.vercel.app)"
-              className="px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold text-emerald-900 bg-emerald-50 hover:bg-emerald-100/90 rounded-xl transition-all flex items-center gap-1.5 shadow-2xs border border-emerald-200"
+              title={
+                cloudStatus === 'connected'
+                  ? `Terhubung Online: ${dbProvider || 'Supabase / PostgreSQL'}`
+                  : cloudStatus === 'connecting'
+                  ? 'Menghubungkan ke database online...'
+                  : 'Mode Lokal (Database online belum terhubung)'
+              }
+              className={`px-2 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-2xs border ${
+                cloudStatus === 'offline'
+                  ? 'text-amber-900 bg-amber-50 hover:bg-amber-100 border-amber-200'
+                  : 'text-emerald-900 bg-emerald-50 hover:bg-emerald-100/90 border-emerald-200'
+              }`}
             >
-              <RefreshCw className="w-3.5 h-3.5 text-emerald-700" />
-              <span className="hidden sm:inline">Sync Vercel</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Cloud SQL Terhubung" />
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${
+                  cloudStatus === 'connecting' ? 'animate-spin text-amber-600' : cloudStatus === 'offline' ? 'text-amber-700' : 'text-emerald-700'
+                }`}
+              />
+              <span className="hidden sm:inline">
+                {cloudStatus === 'connected' ? 'Cloud Sync' : cloudStatus === 'connecting' ? 'Menghubungkan...' : 'Mode Lokal'}
+              </span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  cloudStatus === 'connected'
+                    ? 'bg-emerald-500 animate-pulse'
+                    : cloudStatus === 'connecting'
+                    ? 'bg-amber-400 animate-pulse'
+                    : 'bg-rose-500'
+                }`}
+                title={
+                  cloudStatus === 'connected'
+                    ? `Online (${dbProvider || 'Database'})`
+                    : cloudStatus === 'connecting'
+                    ? 'Menghubungkan...'
+                    : 'Offline / Penyimpanan Lokal'
+                }
+              />
             </button>
 
             {isAdmin ? (

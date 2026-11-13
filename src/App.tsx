@@ -11,9 +11,10 @@ import {
   applyWhatsAppSyncDelta
 } from './utils/storage';
 import {
+  checkServerHealth,
   fetchCloudItems, saveCloudItem, deleteCloudItem,
   fetchCloudLoans, createCloudLoan, updateCloudLoan,
-  fetchCloudEvents, createCloudEvent,
+  fetchCloudEvents, createCloudEvent, deleteCloudEvent,
   fetchCloudSettings, saveCloudSettings,
   sendFullSyncBundle
 } from './services/api';
@@ -55,23 +56,44 @@ export default function App() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
+  // Cloud connectivity status
+  const [cloudStatus, setCloudStatus] = useState<'connecting' | 'connected' | 'offline'>('connecting');
+  const [dbProvider, setDbProvider] = useState<string | undefined>(undefined);
+
   // Toast / notification feedback
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Centralized sync loader: loads from Cloud SQL PostgreSQL, falls back to local cache
+  // Centralized sync loader: loads from Supabase / Cloud SQL PostgreSQL, falls back to local cache
   const loadCloudData = useCallback(async (isBackground = false) => {
     try {
-      const [cloudItems, cloudLoans, cloudEvents, cloudSettings] = await Promise.all([
+      const [health, cloudItems, cloudLoans, cloudEvents, cloudSettings] = await Promise.all([
+        !isBackground ? checkServerHealth().catch(() => null) : Promise.resolve(null),
         fetchCloudItems().catch(() => null),
         fetchCloudLoans().catch(() => null),
         fetchCloudEvents().catch(() => null),
         fetchCloudSettings().catch(() => null),
       ]);
+
+      const anyCloudOk = Boolean(cloudItems || cloudLoans || cloudEvents || cloudSettings);
+
+      if (health) {
+        if (health.database === 'connected') {
+          setCloudStatus('connected');
+          setDbProvider(health.provider || 'Supabase / PostgreSQL');
+        } else {
+          setCloudStatus('offline');
+          setDbProvider(health.provider);
+        }
+      } else if (anyCloudOk) {
+        setCloudStatus('connected');
+      } else if (!isBackground) {
+        setCloudStatus('offline');
+      }
 
       if (cloudItems && cloudItems.length > 0) {
         setItems(cloudItems);
@@ -102,6 +124,7 @@ export default function App() {
       }
     } catch (e) {
       if (!isBackground) {
+        setCloudStatus('offline');
         setItems(getStoredItems());
         setLoans(getStoredLoans());
         setEvents(getStoredEvents());
@@ -216,20 +239,25 @@ export default function App() {
     saveStoredEvents(updated);
   };
 
-  const handleSaveSettings = async (newSettings: AppSettings) => {
+  const handleSaveSettings = async (newSettings: AppSettings): Promise<boolean> => {
     setSettings(newSettings);
     saveStoredSettings(newSettings);
-    showToast('Pengaturan lembaga berhasil diperbarui.');
     try {
       await saveCloudSettings(newSettings);
-    } catch (e) {
-      console.error('Failed to sync settings to Cloud SQL:', e);
+      setCloudStatus('connected');
+      showToast('Pengaturan berhasil disimpan & tersinkron online ke database.');
+      return true;
+    } catch (e: any) {
+      console.error('Failed to sync settings to database:', e);
+      setCloudStatus('offline');
+      showToast('Tersimpan lokal, gagal sinkron ke database online.');
+      return false;
     }
   };
 
   const handleDataReset = () => {
     loadCloudData(false);
-    showToast('Data sistem telah dimuat ulang dari database cloud.');
+    showToast('Data sistem telah dimuat ulang dari database online.');
   };
 
   // Admin Auth Handlers
@@ -245,7 +273,7 @@ export default function App() {
     showToast('Telah keluar dari mode Admin.');
   };
 
-  // Item Management (Admin) with Cloud SQL Sync
+  // Item Management (Admin) with Cloud Database Sync
   const handleSaveItem = async (itemToSave: MediaItem) => {
     const existingIndex = items.findIndex((i) => i.id === itemToSave.id);
     const isNew = existingIndex < 0;
@@ -253,17 +281,23 @@ export default function App() {
     if (existingIndex >= 0) {
       newItems = [...items];
       newItems[existingIndex] = itemToSave;
-      showToast(`Alat ${itemToSave.name} berhasil diperbarui.`);
     } else {
       newItems = [itemToSave, ...items];
-      showToast(`Alat baru ${itemToSave.name} berhasil ditambahkan.`);
     }
     handleUpdateItems(newItems);
 
     try {
       await saveCloudItem(itemToSave, isNew);
+      setCloudStatus('connected');
+      showToast(
+        isNew
+          ? `Alat baru ${itemToSave.name} berhasil ditambahkan & disinkronkan.`
+          : `Alat ${itemToSave.name} berhasil diperbarui & disinkronkan.`
+      );
     } catch (e) {
-      console.error('Failed to sync item to Cloud SQL:', e);
+      console.error('Failed to sync item to database:', e);
+      setCloudStatus('offline');
+      showToast(`Alat ${itemToSave.name} disimpan lokal (database online belum terjangkau).`);
     }
   };
 
@@ -272,60 +306,82 @@ export default function App() {
     if (window.confirm(`Yakin ingin menghapus alat "${item?.name || id}" dari inventaris?`)) {
       const newItems = items.filter((i) => i.id !== id);
       handleUpdateItems(newItems);
-      showToast('Alat telah dihapus dari inventaris.');
 
       try {
         await deleteCloudItem(id);
+        setCloudStatus('connected');
+        showToast('Alat telah dihapus dari database online.');
       } catch (e) {
-        console.error('Failed to delete item from Cloud SQL:', e);
+        console.error('Failed to delete item from database:', e);
+        setCloudStatus('offline');
+        showToast('Alat dihapus lokal (gagal hapus di database online).');
       }
     }
   };
 
-  // Event Management (Admin) with Cloud SQL Sync
+  // Event Management (Admin) with Cloud Database Sync
   const handleSaveEvent = async (eventToSave: MediaEvent) => {
     const existingIndex = events.findIndex((e) => e.id === eventToSave.id);
+    const isUpdate = existingIndex >= 0;
     let newEvents: MediaEvent[];
-    if (existingIndex >= 0) {
+    if (isUpdate) {
       newEvents = [...events];
       newEvents[existingIndex] = eventToSave;
-      showToast(`Jadwal "${eventToSave.title}" berhasil diperbarui.`);
     } else {
       newEvents = [eventToSave, ...events];
-      showToast(`Jadwal liputan "${eventToSave.title}" berhasil ditambahkan.`);
     }
     handleUpdateEvents(newEvents);
 
     try {
       await createCloudEvent(eventToSave);
+      setCloudStatus('connected');
+      showToast(
+        isUpdate
+          ? `Jadwal "${eventToSave.title}" berhasil diperbarui & disinkronkan.`
+          : `Jadwal liputan "${eventToSave.title}" berhasil ditambahkan & disinkronkan.`
+      );
     } catch (e) {
-      console.error('Failed to sync event to Cloud SQL:', e);
+      console.error('Failed to sync event to database:', e);
+      setCloudStatus('offline');
+      showToast(`Jadwal "${eventToSave.title}" disimpan lokal (database online belum terjangkau).`);
     }
   };
 
-  const handleDeleteEvent = (id: string) => {
+  const handleDeleteEvent = async (id: string) => {
     const event = events.find((e) => e.id === id);
     if (window.confirm(`Yakin ingin menghapus agenda "${event?.title || id}"?`)) {
       const newEvents = events.filter((e) => e.id !== id);
       handleUpdateEvents(newEvents);
-      showToast('Agenda telah dihapus.');
+
+      try {
+        await deleteCloudEvent(id);
+        setCloudStatus('connected');
+        showToast('Agenda telah dihapus dari database online.');
+      } catch (e) {
+        console.error('Failed to delete event from database:', e);
+        setCloudStatus('offline');
+        showToast('Agenda dihapus lokal (gagal hapus di database online).');
+      }
     }
   };
 
-  // Loan Request Submissions (Unit) with Cloud SQL Sync
+  // Loan Request Submissions (Unit) with Cloud Database Sync
   const handleSubmitLoan = async (newLoan: LoanRequest) => {
     const newLoans = [newLoan, ...loans];
     handleUpdateLoans(newLoans);
-    showToast(`Pengajuan ${newLoan.id} dari ${newLoan.unitName} berhasil dibuat.`);
 
     try {
       await createCloudLoan(newLoan);
+      setCloudStatus('connected');
+      showToast(`Pengajuan ${newLoan.id} dari ${newLoan.unitName} berhasil dikirim ke database.`);
     } catch (e) {
-      console.error('Failed to sync loan to Cloud SQL:', e);
+      console.error('Failed to sync loan to database:', e);
+      setCloudStatus('offline');
+      showToast(`Pengajuan ${newLoan.id} tersimpan lokal (gagal kirim ke database online).`);
     }
   };
 
-  // Loan Approval by Admin with Cloud SQL Sync
+  // Loan Approval by Admin with Cloud Database Sync
   const handleApproveLoan = async (loanId: string, adminName: string, pickupLocation?: string) => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return;
@@ -366,7 +422,6 @@ export default function App() {
       return item;
     });
     handleUpdateItems(updatedItems);
-    showToast(`Peminjaman ${loanId} disetujui. Pengambilan di: ${finalPickupLocation}`);
 
     try {
       await updateCloudLoan(loanId, {
@@ -378,12 +433,16 @@ export default function App() {
       for (const it of updatedItems.filter((i) => itemIds.has(i.id))) {
         await saveCloudItem(it, false);
       }
+      setCloudStatus('connected');
+      showToast(`Peminjaman ${loanId} disetujui & tersinkron. Pengambilan di: ${finalPickupLocation}`);
     } catch (e) {
-      console.error('Failed to sync loan approval to Cloud SQL:', e);
+      console.error('Failed to sync loan approval to database:', e);
+      setCloudStatus('offline');
+      showToast(`Peminjaman ${loanId} disetujui lokal (gagal sinkron ke database online).`);
     }
   };
 
-  // Loan Return by Admin with Cloud SQL Sync
+  // Loan Return by Admin with Cloud Database Sync
   const handleReturnLoan = async (loanId: string, returnNotes: string) => {
     const loan = loans.find((l) => l.id === loanId);
     if (!loan) return;
@@ -417,7 +476,6 @@ export default function App() {
       return item;
     });
     handleUpdateItems(updatedItems);
-    showToast(`Alat peminjaman ${loanId} telah dikembalikan ke inventaris.`);
 
     try {
       await updateCloudLoan(loanId, {
@@ -428,12 +486,16 @@ export default function App() {
       for (const it of updatedItems.filter((i) => itemIds.has(i.id))) {
         await saveCloudItem(it, false);
       }
+      setCloudStatus('connected');
+      showToast(`Alat peminjaman ${loanId} dikembalikan & tersinkron online.`);
     } catch (e) {
-      console.error('Failed to sync loan return to Cloud SQL:', e);
+      console.error('Failed to sync loan return to database:', e);
+      setCloudStatus('offline');
+      showToast(`Pengembalian ${loanId} dicatat lokal (gagal sinkron ke database online).`);
     }
   };
 
-  // Loan Rejection by Admin with Cloud SQL Sync
+  // Loan Rejection by Admin with Cloud Database Sync
   const handleRejectLoan = async (loanId: string, reason: string) => {
     const updatedLoans = loans.map((l) => {
       if (l.id === loanId) {
@@ -446,15 +508,18 @@ export default function App() {
       return l;
     });
     handleUpdateLoans(updatedLoans);
-    showToast(`Peminjaman ${loanId} telah ditolak.`);
 
     try {
       await updateCloudLoan(loanId, {
         status: 'Ditolak',
         rejectionReason: reason,
       });
+      setCloudStatus('connected');
+      showToast(`Peminjaman ${loanId} ditolak & tersinkron online.`);
     } catch (e) {
-      console.error('Failed to sync loan rejection to Cloud SQL:', e);
+      console.error('Failed to sync loan rejection to database:', e);
+      setCloudStatus('offline');
+      showToast(`Penolakan ${loanId} dicatat lokal (gagal sinkron ke database online).`);
     }
   };
 
@@ -489,6 +554,8 @@ export default function App() {
             onOpenSyncModal={() => setIsSyncModalOpen(true)}
             pendingLoansCount={pendingLoansCount}
             settings={settings}
+            cloudStatus={cloudStatus}
+            dbProvider={dbProvider}
           />
         </div>
 

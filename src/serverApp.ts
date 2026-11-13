@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import {
-  ensureDatabaseSeeded,
+  ensureDatabaseReady,
+  getActiveDbDriver,
   dbGetItems,
   dbCreateItem,
   dbUpdateItem,
@@ -10,6 +11,7 @@ import {
   dbUpdateLoan,
   dbGetEvents,
   dbCreateEvent,
+  dbDeleteEvent,
   dbGetSettings,
   dbUpdateSettings
 } from './db/queries.ts';
@@ -32,25 +34,41 @@ export const createApiApp = () => {
     next();
   });
 
-  // Auto-seed initial 27 items, settings, and loans if table is empty
-  ensureDatabaseSeeded().catch((err) => {
-    console.warn('Database seeding notice:', err.message || err);
+  // Pastikan tabel & seed data siap sebelum melayani request API (khususnya saat serverless cold start di Vercel/Supabase)
+  app.use('/api', async (_req: Request, _res: Response, next: NextFunction) => {
+    try {
+      await ensureDatabaseReady();
+    } catch (err: any) {
+      console.warn('Database initialization notice:', err?.message || err);
+    }
+    next();
   });
 
   // ==========================================
   // API: HEALTH & STATS
   // ==========================================
   app.get('/api/health', async (_req: Request, res: Response) => {
+    const driver = getActiveDbDriver();
     try {
+      if (driver.mode === 'none') {
+        return res.json({
+          status: 'ok',
+          database: 'fallback',
+          provider: driver.label,
+          serverTime: new Date().toISOString(),
+        });
+      }
+      await ensureDatabaseReady();
       const [items, loans, events, settings] = await Promise.all([
-        dbGetItems().catch(() => []),
-        dbGetLoans().catch(() => []),
-        dbGetEvents().catch(() => []),
-        dbGetSettings().catch(() => null),
+        dbGetItems(),
+        dbGetLoans(),
+        dbGetEvents(),
+        dbGetSettings(),
       ]);
       res.json({
         status: 'ok',
         database: 'connected',
+        provider: driver.label,
         serverTime: new Date().toISOString(),
         institution: settings?.pesantrenName || "PPTQ Qoryatul Qur'an",
         mediaTeam: settings?.mediaTeamName || "Qoryah TV",
@@ -64,6 +82,7 @@ export const createApiApp = () => {
       res.json({
         status: 'ok',
         database: 'fallback',
+        provider: driver.label,
         serverTime: new Date().toISOString(),
         error: err.message
       });
@@ -71,10 +90,11 @@ export const createApiApp = () => {
   });
 
   // ==========================================
-  // API: FULL SYNC BUNDLE (Preview <-> Vercel)
+  // API: FULL SYNC BUNDLE (Preview <-> Vercel/Supabase)
   // ==========================================
   app.get('/api/sync/bundle', async (_req: Request, res: Response) => {
     try {
+      const driver = getActiveDbDriver();
       const [items, loans, events, settings] = await Promise.all([
         dbGetItems(),
         dbGetLoans(),
@@ -84,7 +104,7 @@ export const createApiApp = () => {
 
       res.json({
         timestamp: new Date().toISOString(),
-        source: 'Cloud SQL PostgreSQL (asia-southeast1)',
+        source: driver.label,
         settings,
         items,
         loans,
@@ -114,38 +134,28 @@ export const createApiApp = () => {
 
       if (Array.isArray(items) && items.length > 0) {
         for (const item of items) {
-          try {
-            await dbUpdateItem(item.id, item);
-            updatedItems++;
-          } catch {
-            await dbCreateItem(item).catch(() => {});
-            updatedItems++;
-          }
+          await dbCreateItem(item);
+          updatedItems++;
         }
       }
 
       if (Array.isArray(loans) && loans.length > 0) {
         for (const loan of loans) {
-          try {
-            await dbUpdateLoan(loan.id, loan);
-            updatedLoans++;
-          } catch {
-            await dbCreateLoan(loan).catch(() => {});
-            updatedLoans++;
-          }
+          await dbCreateLoan(loan);
+          updatedLoans++;
         }
       }
 
       if (Array.isArray(events) && events.length > 0) {
         for (const evt of events) {
-          await dbCreateEvent(evt).catch(() => {});
+          await dbCreateEvent(evt);
           updatedEvents++;
         }
       }
 
       res.json({
         success: true,
-        message: 'Paket sinkronisasi berhasil disimpan ke Cloud SQL',
+        message: 'Paket sinkronisasi berhasil disimpan ke database online',
         stats: { updatedItems, updatedLoans, updatedEvents }
       });
     } catch (err: any) {
@@ -256,6 +266,28 @@ export const createApiApp = () => {
     } catch (err: any) {
       console.error('POST /api/events failed:', err);
       res.status(500).json({ error: err.message || 'Gagal menambah agenda' });
+    }
+  });
+
+  app.put('/api/events/:id', async (req: Request, res: Response) => {
+    try {
+      const evt = { ...req.body, id: req.params.id } as MediaEvent;
+      const updated = await dbCreateEvent(evt);
+      res.json(updated);
+    } catch (err: any) {
+      console.error(`PUT /api/events/${req.params.id} failed:`, err);
+      res.status(500).json({ error: err.message || 'Gagal memperbarui agenda' });
+    }
+  });
+
+  app.delete('/api/events/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      await dbDeleteEvent(id);
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error(`DELETE /api/events/${req.params.id} failed:`, err);
+      res.status(500).json({ error: err.message || 'Gagal menghapus agenda' });
     }
   });
 
