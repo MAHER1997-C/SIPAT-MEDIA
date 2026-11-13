@@ -58,11 +58,11 @@ export async function ensureDatabaseReady(): Promise<void> {
       // 1. Cek apakah tabel sudah ada terlebih dahulu (aman untuk user Cloud SQL tanpa hak CREATE di schema public)
       let tablesExist = false;
       try {
-        await db.select({ id: appSettings.id }).from(appSettings).limit(1);
+        await pool.query('SELECT id FROM app_settings LIMIT 1');
         tablesExist = true;
       } catch (probeErr: any) {
-        const msg = String(probeErr?.message || '');
-        const code = String(probeErr?.code || '');
+        const msg = String(probeErr?.message || '') + ' ' + String(probeErr?.cause?.message || '');
+        const code = String(probeErr?.code || probeErr?.cause?.code || '');
         if (code !== '42P01' && !msg.includes('does not exist')) {
           throw probeErr;
         }
@@ -147,6 +147,27 @@ export async function ensureDatabaseReady(): Promise<void> {
             description TEXT,
             related_loan_id TEXT
           );
+
+          ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE media_items ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE loan_requests ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE media_events ENABLE ROW LEVEL SECURITY;
+
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'app_settings' AND policyname = 'Allow public access app_settings') THEN
+              CREATE POLICY "Allow public access app_settings" ON app_settings FOR ALL USING (true) WITH CHECK (true);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'media_items' AND policyname = 'Allow public access media_items') THEN
+              CREATE POLICY "Allow public access media_items" ON media_items FOR ALL USING (true) WITH CHECK (true);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'loan_requests' AND policyname = 'Allow public access loan_requests') THEN
+              CREATE POLICY "Allow public access loan_requests" ON loan_requests FOR ALL USING (true) WITH CHECK (true);
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'media_events' AND policyname = 'Allow public access media_events') THEN
+              CREATE POLICY "Allow public access media_events" ON media_events FOR ALL USING (true) WITH CHECK (true);
+            END IF;
+          END $$;
         `);
       }
 
