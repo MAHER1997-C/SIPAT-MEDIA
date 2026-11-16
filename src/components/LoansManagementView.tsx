@@ -3,7 +3,7 @@ import { LoanRequest, LoanStatus, MediaItem, AppSettings } from '../types';
 import { 
   Search, CheckCircle2, Clock, XCircle, RotateCcw, 
   Send, Copy, Check, MessageSquare, Phone, Calendar, 
-  Shield, ArrowRight, MapPin, Trash2 
+  Shield, ArrowRight, MapPin, Trash2, Edit3, X 
 } from 'lucide-react';
 import { 
   generateWhatsAppMessage, 
@@ -23,6 +23,7 @@ interface LoansManagementViewProps {
   onRejectLoan: (loanId: string, reason: string) => void;
   onDeleteLoan: (loanId: string) => void;
   onOpenAdminAuth: () => void;
+  onUpdateAdminPhone?: (newPhone: string) => Promise<boolean> | void;
 }
 
 export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
@@ -35,6 +36,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
   onRejectLoan,
   onDeleteLoan,
   onOpenAdminAuth,
+  onUpdateAdminPhone,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'Semua' | LoanStatus>('Semua');
@@ -58,6 +60,11 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
 
   // Delete confirmation dialog state
   const [deletingLoan, setDeletingLoan] = useState<LoanRequest | null>(null);
+
+  // Quick Edit Admin WhatsApp dialog state
+  const [isEditingAdminPhone, setIsEditingAdminPhone] = useState(false);
+  const [adminPhoneDraft, setAdminPhoneDraft] = useState(settings.mediaLeaderPhone || '');
+  const [isSavingAdminPhone, setIsSavingAdminPhone] = useState(false);
 
   // Filtered loans
   const filteredLoans = useMemo(() => {
@@ -145,7 +152,7 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
             </p>
           </div>
 
-          {!isAdmin && (
+          {!isAdmin ? (
             <button
               onClick={onOpenAdminAuth}
               className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-emerald-950 bg-amber-300 hover:bg-amber-200 rounded-2xl transition-all shadow-sm shrink-0"
@@ -153,6 +160,22 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
               <Shield className="w-4 h-4 text-emerald-950" />
               <span>Masuk Admin</span>
             </button>
+          ) : (
+            onUpdateAdminPhone && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminPhoneDraft(settings.mediaLeaderPhone || '');
+                  setIsEditingAdminPhone(true);
+                }}
+                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-emerald-950 bg-amber-300 hover:bg-amber-200 rounded-2xl transition-all shadow-sm shrink-0"
+                title="Ubah Nomor WhatsApp Admin Aktif"
+              >
+                <Phone className="w-3.5 h-3.5 text-emerald-950" />
+                <span>WA Admin: <span className="font-mono">{settings.mediaLeaderPhone || '-'}</span></span>
+                <Edit3 className="w-3.5 h-3.5 text-emerald-900" />
+              </button>
+            )
           )}
         </div>
 
@@ -776,6 +799,78 @@ export const LoansManagementView: React.FC<LoansManagementViewProps> = ({
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Setujui & Konfirmasi Lokasi</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK EDIT ADMIN WHATSAPP MODAL */}
+      {isEditingAdminPhone && onUpdateAdminPhone && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-amber-300" />
+                <h3 className="text-sm font-extrabold">Ubah No. WhatsApp Admin</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingAdminPhone(false)}
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/20 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const cleaned = adminPhoneDraft.trim();
+                if (!cleaned) return;
+                setIsSavingAdminPhone(true);
+                try {
+                  await onUpdateAdminPhone(cleaned);
+                  setIsEditingAdminPhone(false);
+                } finally {
+                  setIsSavingAdminPhone(false);
+                }
+              }}
+              className="p-5 space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1.5">
+                  No. WhatsApp Admin yang Bertugas
+                </label>
+                <input
+                  type="tel"
+                  required
+                  autoFocus
+                  value={adminPhoneDraft}
+                  onChange={(e) => setAdminPhoneDraft(e.target.value)}
+                  placeholder="Contoh: 081234567890 atau 62812..."
+                  className="w-full px-3.5 py-2.5 text-sm font-mono font-bold rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900"
+                />
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                  Semua pengajuan peminjaman alat dan laporan WA berikutnya akan diarahkan ke nomor ini dan tersimpan online ke Supabase.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAdminPhone(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingAdminPhone || !adminPhoneDraft.trim()}
+                  className="px-4 py-2 text-xs font-extrabold text-emerald-950 bg-amber-300 hover:bg-amber-200 disabled:opacity-50 rounded-xl transition-colors shadow-xs"
+                >
+                  {isSavingAdminPhone ? 'Menyimpan...' : 'Simpan Nomor'}
                 </button>
               </div>
             </form>

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, jsonb, integer } from 'drizzle-orm/pg-core';
 
 // Users table (mandatory for Cloud SQL + Firebase Auth)
 export const users = pgTable('users', {
@@ -81,3 +81,33 @@ export const mediaEvents = pgTable('media_events', {
   description: text('description'),
   relatedLoanId: text('related_loan_id'),
 });
+
+// Social Media Monthly Reports Table (Instagram, TikTok & Production Counts)
+export const socialMediaReports = pgTable('social_media_reports', {
+  id: text('id').primaryKey(), // 'YYYY-MM'
+  month: integer('month').notNull(), // 0-11
+  year: integer('year').notNull(),
+  producedVideosCount: integer('produced_videos_count').notNull().default(0),
+  producedFlyersCount: integer('produced_flyers_count').notNull().default(0),
+  unUploadedFlyersCount: integer('unuploaded_flyers_count').default(0),
+  productionNotes: text('production_notes'),
+  igAccount: text('ig_account').notNull(),
+  igFollowers: integer('ig_followers').notNull().default(0),
+  igFollowersGrowth: integer('ig_followers_growth').notNull().default(0),
+  igPostsCount: integer('ig_posts_count').notNull().default(0),
+  igTotalViews: integer('ig_total_views').notNull().default(0),
+  igTopContentTitle: text('ig_top_content_title').notNull().default(''),
+  igTopContentViews: integer('ig_top_content_views').notNull().default(0),
+  igTopContentUrl: text('ig_top_content_url'),
+  ttAccount: text('tt_account').notNull(),
+  ttFollowers: integer('tt_followers').notNull().default(0),
+  ttFollowersGrowth: integer('tt_followers_growth').notNull().default(0),
+  ttPostsCount: integer('tt_posts_count').notNull().default(0),
+  ttTotalViews: integer('tt_total_views').notNull().default(0),
+  ttTopContentTitle: text('tt_top_content_title').notNull().default(''),
+  ttTopContentViews: integer('tt_top_content_views').notNull().default(0),
+  ttTopContentUrl: text('tt_top_content_url'),
+  source: text('source').default('manual'),
+  updatedAt: text('updated_at').notNull(),
+});
+

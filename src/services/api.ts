@@ -1,4 +1,4 @@
-import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types/index.ts';
+import { MediaItem, LoanRequest, MediaEvent, AppSettings, SocialMediaMonthlyReport } from '../types/index.ts';
 import {
   isClientSupabaseConfigured,
   supaClientGetItems,
@@ -13,6 +13,8 @@ import {
   supaClientDeleteEvent,
   supaClientGetSettings,
   supaClientSaveSettings,
+  supaClientGetSocialReports,
+  supaClientSaveSocialReport,
 } from '../lib/supabase.ts';
 
 export interface FullSyncBundle {
@@ -333,3 +335,92 @@ export async function saveCloudSettings(settings: AppSettings): Promise<void> {
     throw err;
   }
 }
+
+export async function fetchCloudSocialReports(): Promise<SocialMediaMonthlyReport[]> {
+  try {
+    const res = await fetch(getApiUrl('/api/social-reports'));
+    return await parseJsonResponse<SocialMediaMonthlyReport[]>(res);
+  } catch (err) {
+    if (isClientSupabaseConfigured) {
+      return await supaClientGetSocialReports();
+    }
+    throw err;
+  }
+}
+
+export async function saveCloudSocialReport(
+  report: SocialMediaMonthlyReport
+): Promise<SocialMediaMonthlyReport> {
+  try {
+    const res = await fetch(getApiUrl('/api/social-reports'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(report),
+    });
+    return await parseJsonResponse<SocialMediaMonthlyReport>(res);
+  } catch (err) {
+    if (isClientSupabaseConfigured) {
+      return await supaClientSaveSocialReport(report);
+    }
+    throw err;
+  }
+}
+
+export interface SocialBotApiStatus {
+  instagramGraphConfigured: boolean;
+  tiktokDisplayConfigured: boolean;
+  rapidApiConfigured: boolean;
+  geminiVisionConfigured: boolean;
+}
+
+export async function fetchSocialBotApiStatus(): Promise<SocialBotApiStatus | null> {
+  try {
+    const res = await fetch(getApiUrl('/api/social-reports/api-status'));
+    return await parseJsonResponse<SocialBotApiStatus>(res);
+  } catch {
+    return null;
+  }
+}
+
+export async function botFetchSocialReport(payload: {
+  id: string;
+  month: number;
+  year: number;
+  igAccount: string;
+  ttAccount: string;
+  currentReport?: Partial<SocialMediaMonthlyReport>;
+  prevReport?: Partial<SocialMediaMonthlyReport>;
+}): Promise<{
+  report: SocialMediaMonthlyReport;
+  botMessage: string;
+  verified?: boolean;
+  apiStatus?: SocialBotApiStatus;
+}> {
+  const res = await fetch(getApiUrl('/api/social-reports/bot-fetch'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await parseJsonResponse<{
+    report: SocialMediaMonthlyReport;
+    botMessage: string;
+    verified?: boolean;
+    apiStatus?: SocialBotApiStatus;
+  }>(res);
+}
+
+export async function botParseSocialInsight(payload: {
+  imageBase64?: string;
+  mimeType?: string;
+  rawText?: string;
+  currentReport: SocialMediaMonthlyReport;
+}): Promise<{ report: SocialMediaMonthlyReport; botMessage: string }> {
+  const res = await fetch(getApiUrl('/api/social-reports/bot-parse'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return await parseJsonResponse<{ report: SocialMediaMonthlyReport; botMessage: string }>(res);
+}
+
+

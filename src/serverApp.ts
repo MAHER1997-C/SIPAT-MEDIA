@@ -14,9 +14,16 @@ import {
   dbCreateEvent,
   dbDeleteEvent,
   dbGetSettings,
-  dbUpdateSettings
+  dbUpdateSettings,
+  dbGetSocialReports,
+  dbSaveSocialReport
 } from './db/queries.ts';
-import { MediaItem, LoanRequest, MediaEvent, AppSettings } from './types/index.ts';
+import { MediaItem, LoanRequest, MediaEvent, AppSettings, SocialMediaMonthlyReport } from './types/index.ts';
+import {
+  runSocialProfileBotFetch,
+  runSocialInsightParserBot,
+  getSocialBotApiStatus,
+} from './services/socialBotServer.ts';
 
 export const createApiApp = () => {
   const app = express();
@@ -326,5 +333,63 @@ export const createApiApp = () => {
     }
   });
 
+  // ==========================================
+  // API: SOCIAL MEDIA MONTHLY REPORTS & BOT
+  // ==========================================
+  app.get('/api/social-reports', async (_req: Request, res: Response) => {
+    try {
+      const reports = await dbGetSocialReports();
+      res.json(reports);
+    } catch (err: any) {
+      console.error('GET /api/social-reports failed:', err);
+      res.status(500).json({ error: err.message || 'Gagal memuat laporan media sosial' });
+    }
+  });
+
+  app.post('/api/social-reports', async (req: Request, res: Response) => {
+    try {
+      const saved = await dbSaveSocialReport(req.body as SocialMediaMonthlyReport);
+      res.json(saved);
+    } catch (err: any) {
+      console.error('POST /api/social-reports failed:', err);
+      res.status(500).json({ error: err.message || 'Gagal menyimpan laporan media sosial' });
+    }
+  });
+
+  app.get('/api/social-reports/api-status', (_req: Request, res: Response) => {
+    res.json(getSocialBotApiStatus());
+  });
+
+  app.post('/api/social-reports/bot-fetch', async (req: Request, res: Response) => {
+    try {
+      const result = await runSocialProfileBotFetch(req.body);
+      const saved = await dbSaveSocialReport(result.report);
+      res.json({
+        report: saved,
+        botMessage: result.botMessage,
+        verified: result.verified,
+        apiStatus: result.apiStatus,
+      });
+    } catch (err: any) {
+      console.error('POST /api/social-reports/bot-fetch failed:', err);
+      res.status(500).json({ error: err.message || 'Bot gagal menarik data profil media sosial' });
+    }
+  });
+
+  app.post('/api/social-reports/bot-parse', async (req: Request, res: Response) => {
+    try {
+      const result = await runSocialInsightParserBot(req.body);
+      const saved = await dbSaveSocialReport(result.report);
+      res.json({
+        report: saved,
+        botMessage: result.botMessage,
+      });
+    } catch (err: any) {
+      console.error('POST /api/social-reports/bot-parse failed:', err);
+      res.status(500).json({ error: err.message || 'Bot gagal memindai data Insight' });
+    }
+  });
+
   return app;
 };
+

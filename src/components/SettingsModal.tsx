@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AppSettings } from '../types';
 import { 
   X, Save, Settings, Download, Upload, RefreshCw, KeyRound, 
@@ -46,13 +46,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const wasOpenRef = useRef(false);
 
-  // Pastikan form selalu sinkron dengan pengaturan terbaru dari database online saat modal dibuka
+  // Sinkronkan form hanya saat modal pertama kali dibuka agar polling background tidak menimpa ketikan admin
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpenRef.current) {
       setFormData(settings);
       setSuccessMsg('');
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen, settings]);
 
   if (!isOpen) return null;
@@ -133,7 +135,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     e.preventDefault();
     setIsSaving(true);
     try {
-      const synced = await onSaveSettings(formData);
+      const cleanedData: AppSettings = {
+        ...formData,
+        mediaLeaderPhone: formData.mediaLeaderPhone.trim(),
+        adminPin: formData.adminPin.trim(),
+      };
+      const synced = await onSaveSettings(cleanedData);
       setSuccessMsg(
         synced === false
           ? 'Tersimpan di browser lokal (Database online belum terjangkau).'
@@ -503,15 +510,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                  No. WhatsApp Koordinator / Admin Media (Awali 62 atau 08)
+                  No. WhatsApp Koordinator / Admin Media Aktif (Awali 62 atau 08)
                 </label>
                 <input
-                  type="text"
-                  placeholder="Contoh: 081515509831"
+                  type="tel"
+                  required
+                  placeholder="Contoh: 081515509831 atau 62812..."
                   value={formData.mediaLeaderPhone}
                   onChange={(e) => setFormData({ ...formData, mediaLeaderPhone: e.target.value })}
                   className="w-full px-3.5 py-2.5 text-xs font-mono font-bold rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-900 shadow-2xs"
                 />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Admin dapat mengganti nomor ini kapan saja ke nomor WA aktif yang bertugas. Perubahan langsung tersinkron ke Supabase untuk seluruh perangkat.
+                </p>
               </div>
             </div>
           </div>

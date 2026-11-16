@@ -333,7 +333,7 @@ _Silakan klik tautan di atas untuk membuka katalog ${totalCount} alat & mengajuk
                   {isAdmin ? 'Pengaturan Lembaga' : 'Akses Admin'}
                 </h3>
                 <span className="text-[10px] sm:text-[11px] font-bold text-emerald-800">
-                  {isAdmin ? 'Edit Identitas' : 'Masuk PIN'}
+                  {isAdmin ? 'Identitas & WA Admin' : 'Masuk PIN'}
                 </span>
               </div>
             </div>

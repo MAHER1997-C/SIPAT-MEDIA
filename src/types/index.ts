@@ -96,3 +96,36 @@ export interface AppSettings {
   mediaLeaderPhone: string;
   adminPin: string;
 }
+
+export interface SocialMediaMonthlyReport {
+  id: string; // e.g. "2026-11" (YYYY-MM)
+  month: number; // 0-11 (0 = Januari, 10 = November)
+  year: number; // e.g. 2026
+  // Jumlah Produksi Konten Bulanan
+  producedVideosCount: number; // Jumlah produksi konten Video
+  producedFlyersCount: number; // Jumlah produksi konten Flyer (termasuk tidak terupload)
+  unUploadedFlyersCount?: number; // Rincian opsional flyer internal/tidak terupload
+  productionNotes?: string;
+  // Instagram Metrics
+  igAccount: string; // e.g. "@qoryatulquran"
+  igFollowers: number;
+  igFollowersGrowth: number; // Pertumbuhan followers dibanding bulan lalu (+/-)
+  igPostsCount: number; // Jumlah konten IG terupload bulan ini
+  igTotalViews: number; // Total views/reach IG bulan ini
+  igTopContentTitle: string; // Judul/topik konten IG terpopuler bulan ini
+  igTopContentViews: number; // Jumlah views konten IG terpopuler
+  igTopContentUrl?: string;
+  // TikTok Metrics
+  ttAccount: string; // e.g. "@qoryahtv"
+  ttFollowers: number;
+  ttFollowersGrowth: number; // Pertumbuhan followers dibanding bulan lalu (+/-)
+  ttPostsCount: number; // Jumlah konten TikTok terupload bulan ini
+  ttTotalViews: number; // Total views TikTok bulan ini
+  ttTopContentTitle: string; // Judul/topik konten TikTok terpopuler bulan ini
+  ttTopContentViews: number; // Jumlah views konten TikTok terpopuler
+  ttTopContentUrl?: string;
+  // Metadata
+  updatedAt: string;
+  source?: 'manual' | 'bot-username' | 'bot-screenshot';
+}
+

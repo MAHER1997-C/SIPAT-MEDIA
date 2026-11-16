@@ -1,4 +1,4 @@
-import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
+import { MediaItem, LoanRequest, MediaEvent, AppSettings, SocialMediaMonthlyReport } from '../types';
 
 export const initialSettings: AppSettings = {
   appTitle: "SIPAT Media",
@@ -563,4 +563,62 @@ export const initialEvents: MediaEvent[] = [
     description: "Liputan komprehensif ujian semester hafalan Al-Qur'an seluruh jenjang."
   }
 ];
+
+export const initialSocialReports: SocialMediaMonthlyReport[] = [
+  {
+    id: "2026-10",
+    month: 9, // Oktober
+    year: 2026,
+    producedVideosCount: 0,
+    producedFlyersCount: 0,
+    unUploadedFlyersCount: 0,
+    productionNotes: "Belum ada data yang diinput untuk periode ini.",
+    igAccount: "@pondokqq",
+    igFollowers: 0,
+    igFollowersGrowth: 0,
+    igPostsCount: 0,
+    igTotalViews: 0,
+    igTopContentTitle: "-",
+    igTopContentViews: 0,
+    igTopContentUrl: "https://www.instagram.com/pondokqq",
+    ttAccount: "@pondokqq",
+    ttFollowers: 0,
+    ttFollowersGrowth: 0,
+    ttPostsCount: 0,
+    ttTotalViews: 0,
+    ttTopContentTitle: "-",
+    ttTopContentViews: 0,
+    ttTopContentUrl: "https://www.tiktok.com/@pondokqq",
+    updatedAt: "2026-10-31T15:00:00.000Z",
+    source: "manual"
+  },
+  {
+    id: "2026-11",
+    month: 10, // November
+    year: 2026,
+    producedVideosCount: 0,
+    producedFlyersCount: 0,
+    unUploadedFlyersCount: 0,
+    productionNotes: "Silakan unggah Screenshot Insight @pondokqq, hubungkan API Resmi, atau input manual jumlah Video & Flyer.",
+    igAccount: "@pondokqq",
+    igFollowers: 0,
+    igFollowersGrowth: 0,
+    igPostsCount: 0,
+    igTotalViews: 0,
+    igTopContentTitle: "-",
+    igTopContentViews: 0,
+    igTopContentUrl: "https://www.instagram.com/pondokqq",
+    ttAccount: "@pondokqq",
+    ttFollowers: 0,
+    ttFollowersGrowth: 0,
+    ttPostsCount: 0,
+    ttTotalViews: 0,
+    ttTopContentTitle: "-",
+    ttTopContentViews: 0,
+    ttTopContentUrl: "https://www.tiktok.com/@pondokqq",
+    updatedAt: "2026-11-16T08:00:00.000Z",
+    source: "manual"
+  }
+];
+
 

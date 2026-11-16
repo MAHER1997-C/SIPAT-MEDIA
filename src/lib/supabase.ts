@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types/index.ts';
-import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData.ts';
+import { MediaItem, LoanRequest, MediaEvent, AppSettings, SocialMediaMonthlyReport } from '../types/index.ts';
+import { initialItems, initialLoans, initialEvents, initialSettings, initialSocialReports } from '../data/seedData.ts';
 
 const supabaseUrl =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ||
@@ -315,3 +315,84 @@ export async function supaClientSaveSettings(settings: AppSettings): Promise<voi
   });
   if (error) throw error;
 }
+
+export async function supaClientGetSocialReports(): Promise<SocialMediaMonthlyReport[]> {
+  const client = getClientSupabase();
+  if (!client) throw new Error('Supabase client not configured');
+  const { data, error } = await client
+    .from('social_media_reports')
+    .select('*')
+    .order('id', { ascending: false });
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    for (const rep of initialSocialReports) {
+      await supaClientSaveSocialReport(rep);
+    }
+    return initialSocialReports;
+  }
+  return data.map((r: any) => ({
+    id: r.id,
+    month: Number(r.month),
+    year: Number(r.year),
+    producedVideosCount: Number(r.produced_videos_count || 0),
+    producedFlyersCount: Number(r.produced_flyers_count || 0),
+    unUploadedFlyersCount: Number(r.unuploaded_flyers_count || 0),
+    productionNotes: r.production_notes || undefined,
+    igAccount: r.ig_account || '@pondokqq',
+    igFollowers: Number(r.ig_followers || 0),
+    igFollowersGrowth: Number(r.ig_followers_growth || 0),
+    igPostsCount: Number(r.ig_posts_count || 0),
+    igTotalViews: Number(r.ig_total_views || 0),
+    igTopContentTitle: r.ig_top_content_title || '-',
+    igTopContentViews: Number(r.ig_top_content_views || 0),
+    igTopContentUrl: r.ig_top_content_url || 'https://www.instagram.com/pondokqq',
+    ttAccount: r.tt_account || '@pondokqq',
+    ttFollowers: Number(r.tt_followers || 0),
+    ttFollowersGrowth: Number(r.tt_followers_growth || 0),
+    ttPostsCount: Number(r.tt_posts_count || 0),
+    ttTotalViews: Number(r.tt_total_views || 0),
+    ttTopContentTitle: r.tt_top_content_title || '-',
+    ttTopContentViews: Number(r.tt_top_content_views || 0),
+    ttTopContentUrl: r.tt_top_content_url || 'https://www.tiktok.com/@pondokqq',
+    source: r.source || 'manual',
+    updatedAt: r.updated_at || new Date().toISOString(),
+  }));
+}
+
+export async function supaClientSaveSocialReport(
+  report: SocialMediaMonthlyReport
+): Promise<SocialMediaMonthlyReport> {
+  const client = getClientSupabase();
+  if (!client) throw new Error('Supabase client not configured');
+  const updatedAt = new Date().toISOString();
+  const { error } = await client.from('social_media_reports').upsert({
+    id: report.id,
+    month: report.month,
+    year: report.year,
+    produced_videos_count: report.producedVideosCount,
+    produced_flyers_count: report.producedFlyersCount,
+    unuploaded_flyers_count: report.unUploadedFlyersCount || 0,
+    production_notes: report.productionNotes || null,
+    ig_account: report.igAccount,
+    ig_followers: report.igFollowers,
+    ig_followers_growth: report.igFollowersGrowth,
+    ig_posts_count: report.igPostsCount,
+    ig_total_views: report.igTotalViews,
+    ig_top_content_title: report.igTopContentTitle,
+    ig_top_content_views: report.igTopContentViews,
+    ig_top_content_url: report.igTopContentUrl || null,
+    tt_account: report.ttAccount,
+    tt_followers: report.ttFollowers,
+    tt_followers_growth: report.ttFollowersGrowth,
+    tt_posts_count: report.ttPostsCount,
+    tt_total_views: report.ttTotalViews,
+    tt_top_content_title: report.ttTopContentTitle,
+    tt_top_content_views: report.ttTopContentViews,
+    tt_top_content_url: report.ttTopContentUrl || null,
+    source: report.source || 'manual',
+    updated_at: updatedAt,
+  });
+  if (error) throw error;
+  return { ...report, updatedAt };
+}
+

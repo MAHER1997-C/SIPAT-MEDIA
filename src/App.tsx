@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MediaItem, LoanRequest, MediaEvent, AppSettings } from './types';
+import { MediaItem, LoanRequest, MediaEvent, AppSettings, SocialMediaMonthlyReport } from './types';
 import { 
   getStoredItems, saveStoredItems, 
   getStoredLoans, saveStoredLoans, 
   getStoredEvents, saveStoredEvents, 
-  getStoredSettings, saveStoredSettings, 
+  getStoredSettings, saveStoredSettings,
+  getStoredSocialReports, saveStoredSocialReports,
   getAdminSession, setAdminSession,
   decodeSettingsFromCode,
   decodeFullSyncBundle,
@@ -16,6 +17,7 @@ import {
   fetchCloudLoans, createCloudLoan, updateCloudLoan, deleteCloudLoan,
   fetchCloudEvents, createCloudEvent, deleteCloudEvent,
   fetchCloudSettings, saveCloudSettings,
+  fetchCloudSocialReports, saveCloudSocialReport, botFetchSocialReport, botParseSocialInsight,
   sendFullSyncBundle
 } from './services/api';
 import { Navbar } from './components/Navbar';
@@ -36,6 +38,7 @@ export default function App() {
   const [loans, setLoans] = useState<LoanRequest[]>([]);
   const [events, setEvents] = useState<MediaEvent[]>([]);
   const [settings, setSettings] = useState<AppSettings>(getStoredSettings());
+  const [socialReports, setSocialReports] = useState<SocialMediaMonthlyReport[]>(getStoredSocialReports());
 
   // Role State (Admin vs Unit/General)
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -69,15 +72,16 @@ export default function App() {
   // Centralized sync loader: loads from Supabase / Cloud SQL PostgreSQL, falls back to local cache
   const loadCloudData = useCallback(async (isBackground = false) => {
     try {
-      const [health, cloudItems, cloudLoans, cloudEvents, cloudSettings] = await Promise.all([
+      const [health, cloudItems, cloudLoans, cloudEvents, cloudSettings, cloudSocialReports] = await Promise.all([
         !isBackground ? checkServerHealth().catch(() => null) : Promise.resolve(null),
         fetchCloudItems().catch(() => null),
         fetchCloudLoans().catch(() => null),
         fetchCloudEvents().catch(() => null),
         fetchCloudSettings().catch(() => null),
+        fetchCloudSocialReports().catch(() => null),
       ]);
 
-      const anyCloudOk = Boolean(cloudItems || cloudLoans || cloudEvents || cloudSettings);
+      const anyCloudOk = Boolean(cloudItems || cloudLoans || cloudEvents || cloudSettings || cloudSocialReports);
 
       if (health) {
         if (health.database === 'connected') {
@@ -120,6 +124,13 @@ export default function App() {
       } else if (!isBackground) {
         setSettings(getStoredSettings());
       }
+
+      if (cloudSocialReports && cloudSocialReports.length > 0) {
+        setSocialReports(cloudSocialReports);
+        saveStoredSocialReports(cloudSocialReports);
+      } else if (!isBackground) {
+        setSocialReports(getStoredSocialReports());
+      }
     } catch (e) {
       if (!isBackground) {
         setCloudStatus('offline');
@@ -127,6 +138,7 @@ export default function App() {
         setLoans(getStoredLoans());
         setEvents(getStoredEvents());
         setSettings(getStoredSettings());
+        setSocialReports(getStoredSocialReports());
       }
     }
   }, []);
@@ -253,16 +265,103 @@ export default function App() {
     }
   };
 
+  // Social Media & Content Production Report Handlers (Admin + Bot)
+  const upsertLocalSocialReport = (saved: SocialMediaMonthlyReport) => {
+    setSocialReports((prev) => {
+      const idx = prev.findIndex((r) => r.id === saved.id);
+      const next = idx >= 0 ? prev.map((r, i) => (i === idx ? saved : r)) : [saved, ...prev];
+      saveStoredSocialReports(next);
+      return next;
+    });
+  };
+
+  const handleSaveSocialReport = async (report: SocialMediaMonthlyReport): Promise<void> => {
+    upsertLocalSocialReport(report);
+    try {
+      const saved = await saveCloudSocialReport(report);
+      upsertLocalSocialReport(saved);
+      setCloudStatus('connected');
+      showToast(`Laporan Medsos & Konten (${report.id}) disimpan & tersinkron ke Supabase.`);
+    } catch (e) {
+      console.error('Failed to sync social report to database:', e);
+      setCloudStatus('offline');
+      showToast(`Laporan Medsos (${report.id}) tersimpan lokal.`);
+    }
+  };
+
+  const handleBotFetchSocialReport = async (payload: {
+    id: string;
+    month: number;
+    year: number;
+    igAccount: string;
+    ttAccount: string;
+    currentReport?: Partial<SocialMediaMonthlyReport>;
+    prevReport?: Partial<SocialMediaMonthlyReport>;
+  }) => {
+    const res = await botFetchSocialReport(payload);
+    if (res?.report) {
+      upsertLocalSocialReport(res.report);
+      setCloudStatus('connected');
+      showToast(res.botMessage || `Bot berhasil memperbarui data @${res.report.igAccount} & @${res.report.ttAccount}.`);
+    }
+    return res;
+  };
+
+  const handleBotParseSocialInsight = async (payload: {
+    imageBase64?: string;
+    mimeType?: string;
+    rawText?: string;
+    currentReport: SocialMediaMonthlyReport;
+  }) => {
+    const res = await botParseSocialInsight(payload);
+    if (res?.report) {
+      upsertLocalSocialReport(res.report);
+      setCloudStatus('connected');
+      showToast(res.botMessage || `Bot AI berhasil mengekstrak metrik insight (${res.report.id}).`);
+    }
+    return res;
+  };
+
   const handleDataReset = () => {
     loadCloudData(false);
     showToast('Data sistem telah dimuat ulang dari database online.');
   };
 
   // Admin Auth Handlers
-  const handleAdminSuccess = () => {
+  const handleAdminSuccess = async (updatedAdminPhone?: string) => {
     setIsAdmin(true);
     setAdminSession(true);
+
+    const cleanedPhone = updatedAdminPhone?.trim();
+    if (cleanedPhone && cleanedPhone !== (settings.mediaLeaderPhone || '').trim()) {
+      const nextSettings: AppSettings = {
+        ...settings,
+        mediaLeaderPhone: cleanedPhone,
+      };
+      setSettings(nextSettings);
+      saveStoredSettings(nextSettings);
+      try {
+        await saveCloudSettings(nextSettings);
+        setCloudStatus('connected');
+        showToast(`Masuk Admin & No. WA Admin diubah ke ${cleanedPhone} (tersinkron ke Supabase).`);
+      } catch (e) {
+        console.error('Failed to sync updated admin phone to database:', e);
+        setCloudStatus('offline');
+        showToast(`Masuk Admin & No. WA Admin diubah ke ${cleanedPhone} (lokal).`);
+      }
+      return;
+    }
+
     showToast('Berhasil masuk sebagai Admin Media.');
+  };
+
+  const handleQuickUpdateAdminPhone = async (newPhone: string): Promise<boolean> => {
+    const cleanedPhone = newPhone.trim();
+    if (!cleanedPhone) return false;
+    return await handleSaveSettings({
+      ...settings,
+      mediaLeaderPhone: cleanedPhone,
+    });
   };
 
   const handleAdminLogout = () => {
@@ -679,6 +778,7 @@ export default function App() {
               onRejectLoan={handleRejectLoan}
               onDeleteLoan={handleDeleteLoan}
               onOpenAdminAuth={() => setIsAdminModalOpen(true)}
+              onUpdateAdminPhone={handleQuickUpdateAdminPhone}
             />
           )}
 
@@ -688,6 +788,12 @@ export default function App() {
               loans={loans}
               events={events}
               settings={settings}
+              socialReports={socialReports}
+              isAdmin={isAdmin}
+              onSaveSocialReport={handleSaveSocialReport}
+              onBotFetchSocialReport={handleBotFetchSocialReport}
+              onBotParseSocialInsight={handleBotParseSocialInsight}
+              onOpenAdminAuth={() => setIsAdminModalOpen(true)}
             />
           )}
         </main>
@@ -716,6 +822,7 @@ export default function App() {
         onClose={() => setIsAdminModalOpen(false)}
         onSuccess={handleAdminSuccess}
         currentPin={settings.adminPin}
+        currentAdminPhone={settings.mediaLeaderPhone}
       />
 
       {/* Add / Edit Inventory Item Modal */}

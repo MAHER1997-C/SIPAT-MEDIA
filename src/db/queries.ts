@@ -1,9 +1,9 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { db, pool, getDatabaseConfigInfo } from './index.ts';
-import { mediaItems, loanRequests, mediaEvents, appSettings } from './schema.ts';
+import { mediaItems, loanRequests, mediaEvents, appSettings, socialMediaReports } from './schema.ts';
 import { eq, desc } from 'drizzle-orm';
-import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData.ts';
-import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types/index.ts';
+import { initialItems, initialLoans, initialEvents, initialSettings, initialSocialReports } from '../data/seedData.ts';
+import { MediaItem, LoanRequest, MediaEvent, AppSettings, SocialMediaMonthlyReport } from '../types/index.ts';
 
 let serverSupabaseClient: SupabaseClient | null = null;
 
@@ -171,6 +171,59 @@ export async function ensureDatabaseReady(): Promise<void> {
         `);
       }
 
+      // 2b. Pastikan tabel social_media_reports ada (untuk database yang dibuat sebelum fitur progres medsos)
+      let socialTableExists = false;
+      try {
+        await pool.query('SELECT id FROM social_media_reports LIMIT 1');
+        socialTableExists = true;
+      } catch (probeSocialErr: any) {
+        const msg = String(probeSocialErr?.message || '') + ' ' + String(probeSocialErr?.cause?.message || '');
+        const code = String(probeSocialErr?.code || probeSocialErr?.cause?.code || '');
+        if (code === '42P01' || msg.includes('does not exist')) {
+          try {
+            await pool.query(`
+              CREATE TABLE IF NOT EXISTS social_media_reports (
+                id TEXT PRIMARY KEY,
+                month INTEGER NOT NULL,
+                year INTEGER NOT NULL,
+                produced_videos_count INTEGER NOT NULL DEFAULT 0,
+                produced_flyers_count INTEGER NOT NULL DEFAULT 0,
+                unuploaded_flyers_count INTEGER DEFAULT 0,
+                production_notes TEXT,
+                ig_account TEXT NOT NULL,
+                ig_followers INTEGER NOT NULL DEFAULT 0,
+                ig_followers_growth INTEGER NOT NULL DEFAULT 0,
+                ig_posts_count INTEGER NOT NULL DEFAULT 0,
+                ig_total_views INTEGER NOT NULL DEFAULT 0,
+                ig_top_content_title TEXT NOT NULL DEFAULT '',
+                ig_top_content_views INTEGER NOT NULL DEFAULT 0,
+                ig_top_content_url TEXT,
+                tt_account TEXT NOT NULL,
+                tt_followers INTEGER NOT NULL DEFAULT 0,
+                tt_followers_growth INTEGER NOT NULL DEFAULT 0,
+                tt_posts_count INTEGER NOT NULL DEFAULT 0,
+                tt_total_views INTEGER NOT NULL DEFAULT 0,
+                tt_top_content_title TEXT NOT NULL DEFAULT '',
+                tt_top_content_views INTEGER NOT NULL DEFAULT 0,
+                tt_top_content_url TEXT,
+                source TEXT DEFAULT 'manual',
+                updated_at TEXT NOT NULL
+              );
+              ALTER TABLE social_media_reports ENABLE ROW LEVEL SECURITY;
+              DO $$
+              BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'social_media_reports' AND policyname = 'Allow public access social_media_reports') THEN
+                  CREATE POLICY "Allow public access social_media_reports" ON social_media_reports FOR ALL USING (true) WITH CHECK (true);
+                END IF;
+              END $$;
+            `);
+            socialTableExists = true;
+          } catch (createErr) {
+            console.warn('Could not auto-create social_media_reports table:', createErr);
+          }
+        }
+      }
+
       // 3. Seed App Settings jika kosong
       const existingSettings = await db.select().from(appSettings).limit(1);
       if (existingSettings.length === 0) {
@@ -268,6 +321,45 @@ export async function ensureDatabaseReady(): Promise<void> {
               relatedLoanId: evt.relatedLoanId || null,
             })
             .onConflictDoNothing();
+        }
+      }
+
+      // 6. Seed Social Media Reports jika kosong
+      if (socialTableExists) {
+        const existingSocial = await db.select().from(socialMediaReports).limit(1);
+        if (existingSocial.length === 0) {
+          for (const rep of initialSocialReports) {
+            await db
+              .insert(socialMediaReports)
+              .values({
+                id: rep.id,
+                month: rep.month,
+                year: rep.year,
+                producedVideosCount: rep.producedVideosCount,
+                producedFlyersCount: rep.producedFlyersCount,
+                unUploadedFlyersCount: rep.unUploadedFlyersCount || 0,
+                productionNotes: rep.productionNotes || null,
+                igAccount: rep.igAccount,
+                igFollowers: rep.igFollowers,
+                igFollowersGrowth: rep.igFollowersGrowth,
+                igPostsCount: rep.igPostsCount,
+                igTotalViews: rep.igTotalViews,
+                igTopContentTitle: rep.igTopContentTitle,
+                igTopContentViews: rep.igTopContentViews,
+                igTopContentUrl: rep.igTopContentUrl || null,
+                ttAccount: rep.ttAccount,
+                ttFollowers: rep.ttFollowers,
+                ttFollowersGrowth: rep.ttFollowersGrowth,
+                ttPostsCount: rep.ttPostsCount,
+                ttTotalViews: rep.ttTotalViews,
+                ttTopContentTitle: rep.ttTopContentTitle,
+                ttTopContentViews: rep.ttTopContentViews,
+                ttTopContentUrl: rep.ttTopContentUrl || null,
+                source: rep.source || 'manual',
+                updatedAt: rep.updatedAt,
+              })
+              .onConflictDoNothing();
+          }
         }
       }
 
@@ -907,3 +999,286 @@ export async function dbUpdateSettings(settings: AppSettings): Promise<void> {
       },
     });
 }
+
+// ==========================================
+// SOCIAL MEDIA MONTHLY REPORTS QUERIES
+// ==========================================
+
+export async function dbGetSocialReports(): Promise<SocialMediaMonthlyReport[]> {
+  const driver = getActiveDbDriver();
+  if (driver.mode === 'supabase-rest') {
+    const supa = getServerSupabase()!;
+    const { data, error } = await supa
+      .from('social_media_reports')
+      .select('*')
+      .order('id', { ascending: false });
+    if (error) {
+      return initialSocialReports;
+    }
+    if (!data || data.length === 0) {
+      return initialSocialReports;
+    }
+    const mapped: SocialMediaMonthlyReport[] = data.map((r: any) => ({
+      id: r.id,
+      month: Number(r.month),
+      year: Number(r.year),
+      producedVideosCount: Number(r.produced_videos_count || 0),
+      producedFlyersCount: Number(r.produced_flyers_count || 0),
+      unUploadedFlyersCount: Number(r.unuploaded_flyers_count || 0),
+      productionNotes: r.production_notes || undefined,
+      igAccount: r.ig_account || '@pondokqq',
+      igFollowers: Number(r.ig_followers || 0),
+      igFollowersGrowth: Number(r.ig_followers_growth || 0),
+      igPostsCount: Number(r.ig_posts_count || 0),
+      igTotalViews: Number(r.ig_total_views || 0),
+      igTopContentTitle: r.ig_top_content_title || '-',
+      igTopContentViews: Number(r.ig_top_content_views || 0),
+      igTopContentUrl: r.ig_top_content_url || 'https://www.instagram.com/pondokqq',
+      ttAccount: r.tt_account || '@pondokqq',
+      ttFollowers: Number(r.tt_followers || 0),
+      ttFollowersGrowth: Number(r.tt_followers_growth || 0),
+      ttPostsCount: Number(r.tt_posts_count || 0),
+      ttTotalViews: Number(r.tt_total_views || 0),
+      ttTopContentTitle: r.tt_top_content_title || '-',
+      ttTopContentViews: Number(r.tt_top_content_views || 0),
+      ttTopContentUrl: r.tt_top_content_url || 'https://www.tiktok.com/@pondokqq',
+      source: r.source || 'manual',
+      updatedAt: r.updated_at || new Date().toISOString(),
+    }));
+
+    // Auto-migrate any old dummy rows (@qoryatulquran / 14820 / 14250 / 14415) in Supabase to clean @pondokqq with 0 metrics
+    const finalReports: SocialMediaMonthlyReport[] = [];
+    for (const item of mapped) {
+      if (
+        item.igAccount === '@qoryatulquran' ||
+        item.ttAccount === '@qoryahtv' ||
+        item.igTopContentUrl?.includes('qoryatulquran') ||
+        item.ttTopContentUrl?.includes('qoryahtv') ||
+        item.igFollowers === 14820 ||
+        item.igFollowers === 14250 ||
+        item.igFollowers === 14415
+      ) {
+        const cleaned: SocialMediaMonthlyReport = {
+          ...item,
+          producedVideosCount: 0,
+          producedFlyersCount: 0,
+          unUploadedFlyersCount: 0,
+          productionNotes: 'Silakan unggah Screenshot Insight @pondokqq atau input manual.',
+          igAccount: '@pondokqq',
+          igFollowers: 0,
+          igFollowersGrowth: 0,
+          igPostsCount: 0,
+          igTotalViews: 0,
+          igTopContentTitle: '-',
+          igTopContentViews: 0,
+          igTopContentUrl: 'https://www.instagram.com/pondokqq',
+          ttAccount: '@pondokqq',
+          ttFollowers: 0,
+          ttFollowersGrowth: 0,
+          ttPostsCount: 0,
+          ttTotalViews: 0,
+          ttTopContentTitle: '-',
+          ttTopContentViews: 0,
+          ttTopContentUrl: 'https://www.tiktok.com/@pondokqq',
+          updatedAt: new Date().toISOString(),
+          source: 'manual',
+        };
+        await dbSaveSocialReport(cleaned).catch(() => {});
+        finalReports.push(cleaned);
+      } else {
+        finalReports.push(item);
+      }
+    }
+    return finalReports;
+  }
+
+  try {
+    const rows = await db
+      .select()
+      .from(socialMediaReports)
+      .orderBy(desc(socialMediaReports.id));
+    if (rows.length === 0) {
+      return initialSocialReports;
+    }
+    const mapped = rows.map((r) => ({
+      id: r.id,
+      month: Number(r.month),
+      year: Number(r.year),
+      producedVideosCount: Number(r.producedVideosCount || 0),
+      producedFlyersCount: Number(r.producedFlyersCount || 0),
+      unUploadedFlyersCount: Number(r.unUploadedFlyersCount || 0),
+      productionNotes: r.productionNotes || undefined,
+      igAccount: r.igAccount || '@pondokqq',
+      igFollowers: Number(r.igFollowers || 0),
+      igFollowersGrowth: Number(r.igFollowersGrowth || 0),
+      igPostsCount: Number(r.igPostsCount || 0),
+      igTotalViews: Number(r.igTotalViews || 0),
+      igTopContentTitle: r.igTopContentTitle || '-',
+      igTopContentViews: Number(r.igTopContentViews || 0),
+      igTopContentUrl: r.igTopContentUrl || 'https://www.instagram.com/pondokqq',
+      ttAccount: r.ttAccount || '@pondokqq',
+      ttFollowers: Number(r.ttFollowers || 0),
+      ttFollowersGrowth: Number(r.ttFollowersGrowth || 0),
+      ttPostsCount: Number(r.ttPostsCount || 0),
+      ttTotalViews: Number(r.ttTotalViews || 0),
+      ttTopContentTitle: r.ttTopContentTitle || '-',
+      ttTopContentViews: Number(r.ttTopContentViews || 0),
+      ttTopContentUrl: r.ttTopContentUrl || 'https://www.tiktok.com/@pondokqq',
+      source: (r.source as any) || 'manual',
+      updatedAt: r.updatedAt,
+    }));
+
+    const finalReports: SocialMediaMonthlyReport[] = [];
+    for (const item of mapped) {
+      if (
+        item.igAccount === '@qoryatulquran' ||
+        item.ttAccount === '@qoryahtv' ||
+        item.igTopContentUrl?.includes('qoryatulquran') ||
+        item.ttTopContentUrl?.includes('qoryahtv') ||
+        item.igFollowers === 14820 ||
+        item.igFollowers === 14250 ||
+        item.igFollowers === 14415
+      ) {
+        const cleaned: SocialMediaMonthlyReport = {
+          ...item,
+          producedVideosCount: 0,
+          producedFlyersCount: 0,
+          unUploadedFlyersCount: 0,
+          productionNotes: 'Silakan unggah Screenshot Insight @pondokqq atau input manual.',
+          igAccount: '@pondokqq',
+          igFollowers: 0,
+          igFollowersGrowth: 0,
+          igPostsCount: 0,
+          igTotalViews: 0,
+          igTopContentTitle: '-',
+          igTopContentViews: 0,
+          igTopContentUrl: 'https://www.instagram.com/pondokqq',
+          ttAccount: '@pondokqq',
+          ttFollowers: 0,
+          ttFollowersGrowth: 0,
+          ttPostsCount: 0,
+          ttTotalViews: 0,
+          ttTopContentTitle: '-',
+          ttTopContentViews: 0,
+          ttTopContentUrl: 'https://www.tiktok.com/@pondokqq',
+          updatedAt: new Date().toISOString(),
+          source: 'manual',
+        };
+        await dbSaveSocialReport(cleaned).catch(() => {});
+        finalReports.push(cleaned);
+      } else {
+        finalReports.push(item);
+      }
+    }
+    return finalReports;
+  } catch (e) {
+    console.warn('Fallback to initialSocialReports:', e);
+    return initialSocialReports;
+  }
+}
+
+export async function dbSaveSocialReport(
+  report: SocialMediaMonthlyReport
+): Promise<SocialMediaMonthlyReport> {
+  const driver = getActiveDbDriver();
+  const updatedAt = new Date().toISOString();
+  const normalized: SocialMediaMonthlyReport = {
+    ...report,
+    updatedAt,
+  };
+
+  if (driver.mode === 'supabase-rest') {
+    const supa = getServerSupabase()!;
+    const { error } = await supa.from('social_media_reports').upsert({
+      id: normalized.id,
+      month: normalized.month,
+      year: normalized.year,
+      produced_videos_count: normalized.producedVideosCount,
+      produced_flyers_count: normalized.producedFlyersCount,
+      unuploaded_flyers_count: normalized.unUploadedFlyersCount || 0,
+      production_notes: normalized.productionNotes || null,
+      ig_account: normalized.igAccount,
+      ig_followers: normalized.igFollowers,
+      ig_followers_growth: normalized.igFollowersGrowth,
+      ig_posts_count: normalized.igPostsCount,
+      ig_total_views: normalized.igTotalViews,
+      ig_top_content_title: normalized.igTopContentTitle,
+      ig_top_content_views: normalized.igTopContentViews,
+      ig_top_content_url: normalized.igTopContentUrl || null,
+      tt_account: normalized.ttAccount,
+      tt_followers: normalized.ttFollowers,
+      tt_followers_growth: normalized.ttFollowersGrowth,
+      tt_posts_count: normalized.ttPostsCount,
+      tt_total_views: normalized.ttTotalViews,
+      tt_top_content_title: normalized.ttTopContentTitle,
+      tt_top_content_views: normalized.ttTopContentViews,
+      tt_top_content_url: normalized.ttTopContentUrl || null,
+      source: normalized.source || 'manual',
+      updated_at: updatedAt,
+    });
+    if (error) throw error;
+    return normalized;
+  }
+
+  await db
+    .insert(socialMediaReports)
+    .values({
+      id: normalized.id,
+      month: normalized.month,
+      year: normalized.year,
+      producedVideosCount: normalized.producedVideosCount,
+      producedFlyersCount: normalized.producedFlyersCount,
+      unUploadedFlyersCount: normalized.unUploadedFlyersCount || 0,
+      productionNotes: normalized.productionNotes || null,
+      igAccount: normalized.igAccount,
+      igFollowers: normalized.igFollowers,
+      igFollowersGrowth: normalized.igFollowersGrowth,
+      igPostsCount: normalized.igPostsCount,
+      igTotalViews: normalized.igTotalViews,
+      igTopContentTitle: normalized.igTopContentTitle,
+      igTopContentViews: normalized.igTopContentViews,
+      igTopContentUrl: normalized.igTopContentUrl || null,
+      ttAccount: normalized.ttAccount,
+      ttFollowers: normalized.ttFollowers,
+      ttFollowersGrowth: normalized.ttFollowersGrowth,
+      ttPostsCount: normalized.ttPostsCount,
+      ttTotalViews: normalized.ttTotalViews,
+      ttTopContentTitle: normalized.ttTopContentTitle,
+      ttTopContentViews: normalized.ttTopContentViews,
+      ttTopContentUrl: normalized.ttTopContentUrl || null,
+      source: normalized.source || 'manual',
+      updatedAt,
+    })
+    .onConflictDoUpdate({
+      target: socialMediaReports.id,
+      set: {
+        month: normalized.month,
+        year: normalized.year,
+        producedVideosCount: normalized.producedVideosCount,
+        producedFlyersCount: normalized.producedFlyersCount,
+        unUploadedFlyersCount: normalized.unUploadedFlyersCount || 0,
+        productionNotes: normalized.productionNotes || null,
+        igAccount: normalized.igAccount,
+        igFollowers: normalized.igFollowers,
+        igFollowersGrowth: normalized.igFollowersGrowth,
+        igPostsCount: normalized.igPostsCount,
+        igTotalViews: normalized.igTotalViews,
+        igTopContentTitle: normalized.igTopContentTitle,
+        igTopContentViews: normalized.igTopContentViews,
+        igTopContentUrl: normalized.igTopContentUrl || null,
+        ttAccount: normalized.ttAccount,
+        ttFollowers: normalized.ttFollowers,
+        ttFollowersGrowth: normalized.ttFollowersGrowth,
+        ttPostsCount: normalized.ttPostsCount,
+        ttTotalViews: normalized.ttTotalViews,
+        ttTopContentTitle: normalized.ttTopContentTitle,
+        ttTopContentViews: normalized.ttTopContentViews,
+        ttTopContentUrl: normalized.ttTopContentUrl || null,
+        source: normalized.source || 'manual',
+        updatedAt,
+      },
+    });
+
+  return normalized;
+}
+

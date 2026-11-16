@@ -1,5 +1,5 @@
-import { MediaItem, LoanRequest, MediaEvent, AppSettings } from '../types';
-import { initialItems, initialLoans, initialEvents, initialSettings } from '../data/seedData';
+import { MediaItem, LoanRequest, MediaEvent, AppSettings, SocialMediaMonthlyReport } from '../types';
+import { initialItems, initialLoans, initialEvents, initialSettings, initialSocialReports } from '../data/seedData';
 
 const CURRENT_VERSION = 'v9_pptq_2month_events_print_fix';
 const VERSION_KEY = 'sipat_media_version_sync';
@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   LOANS: 'sipat_media_loans_v5',
   EVENTS: 'sipat_media_events_v5',
   SETTINGS: 'sipat_media_settings_v1',
+  SOCIAL_REPORTS: 'sipat_media_social_reports_v1',
   ADMIN_SESSION: 'sipat_media_admin_logged_in_v1',
 };
 
@@ -154,6 +155,72 @@ export function saveStoredSettings(settings: AppSettings): void {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
   } catch (e) {
     console.error('Error saving settings to storage', e);
+  }
+}
+
+function cleanLegacyDummyReport(r: SocialMediaMonthlyReport): SocialMediaMonthlyReport {
+  const isLegacyDummy =
+    r.igAccount === '@qoryatulquran' ||
+    r.ttAccount === '@qoryahtv' ||
+    r.igTopContentUrl?.includes('qoryatulquran') ||
+    r.ttTopContentUrl?.includes('qoryahtv') ||
+    r.igFollowers === 14820 ||
+    r.igFollowers === 14250 ||
+    r.igFollowers === 14415;
+  if (!isLegacyDummy) return r;
+  return {
+    ...r,
+    producedVideosCount: 0,
+    producedFlyersCount: 0,
+    unUploadedFlyersCount: 0,
+    productionNotes: 'Silakan unggah Screenshot Insight @pondokqq atau input manual.',
+    igAccount: '@pondokqq',
+    igFollowers: 0,
+    igFollowersGrowth: 0,
+    igPostsCount: 0,
+    igTotalViews: 0,
+    igTopContentTitle: '-',
+    igTopContentViews: 0,
+    igTopContentUrl: 'https://www.instagram.com/pondokqq',
+    ttAccount: '@pondokqq',
+    ttFollowers: 0,
+    ttFollowersGrowth: 0,
+    ttPostsCount: 0,
+    ttTotalViews: 0,
+    ttTopContentTitle: '-',
+    ttTopContentViews: 0,
+    ttTopContentUrl: 'https://www.tiktok.com/@pondokqq',
+  };
+}
+
+export function getStoredSocialReports(): SocialMediaMonthlyReport[] {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return initialSocialReports;
+    const raw = localStorage.getItem(STORAGE_KEYS.SOCIAL_REPORTS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEYS.SOCIAL_REPORTS, JSON.stringify(initialSocialReports));
+      return initialSocialReports;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      localStorage.setItem(STORAGE_KEYS.SOCIAL_REPORTS, JSON.stringify(initialSocialReports));
+      return initialSocialReports;
+    }
+    const cleaned = parsed.map(cleanLegacyDummyReport);
+    localStorage.setItem(STORAGE_KEYS.SOCIAL_REPORTS, JSON.stringify(cleaned));
+    return cleaned;
+  } catch (e) {
+    console.error('Error reading social reports from storage', e);
+    return initialSocialReports;
+  }
+}
+
+export function saveStoredSocialReports(reports: SocialMediaMonthlyReport[]): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    localStorage.setItem(STORAGE_KEYS.SOCIAL_REPORTS, JSON.stringify(reports));
+  } catch (e) {
+    console.error('Error saving social reports to storage', e);
   }
 }
 
